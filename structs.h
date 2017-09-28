@@ -11,9 +11,10 @@
  * You will have 8K pages total.
  *
  */
-
   struct root_sector;
   struct freeMemoryPage;
-
+  struct directory;
+  struct directory_page;
+  struct data_page;
 
 #endif
