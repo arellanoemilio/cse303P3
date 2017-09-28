@@ -12,6 +12,8 @@
  *
  */
 
+  struct root_sector;
+  struct freeMemoryPage;
 
 
 #endif
