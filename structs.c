@@ -12,7 +12,7 @@ struct root_sector
    * pages will always be one since the first page is root, the second is the
    * the first freeMemoryPage and the third is the second freeMemoryPage
    */
-  int *freeMemoryPage;
+  int *freeMemoryPages;
   int lastAllocatedPage;
 
 }
@@ -24,10 +24,7 @@ struct freeMemoryPage{
 
 //This one i feel needs to change we should discuss this one more
 struct directory{
-  int parentLocation;
-  int parentOffset;
-  int location;
-  int offset;
+  struct directory *parentDirectory;
   // Just the name of that folder
   char *name;
   int isFile;
