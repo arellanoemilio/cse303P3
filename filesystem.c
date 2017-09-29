@@ -28,21 +28,28 @@ char* generateData(char *source, size_t size)
 
 void initializeFileSystem(char *file){
 	FILE *fp = fopen(file, "w");
+	fclose(fp);
+	fp = fopen(file, "w");
 	struct root_sector *rootSector =  (struct root_sector *) malloc(sizeof(struct root_sector));
 	rootSector->directoryPages = 3;
 	rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
 	rootSector->freeMemoryPages[0] = 1;
 	rootSector->freeMemoryPages[1] = 2;
 	rootSector->lastAllocatedPage = 3;
+	printf("created rootSector\n");
 	struct free_memory_page *freeMemoryPage = (struct free_memory_page *) malloc(2 * sizeof(struct free_memory_page));
 	freeMemoryPage[0].freePages = (char *) malloc(512 * sizeof(char));
 	freeMemoryPage[0].freePages[1] = 0xf0;
 	freeMemoryPage[1].freePages = (char *) malloc(512 * sizeof(char));
+
+	printf("created freePages\n");
 	struct directory_page *rootDirectoryPage = (struct directory_page *) malloc(sizeof(struct directory_page));
 	rootDirectoryPage->empty = 1;
 	rootDirectoryPage->pageType = 1;
 	rootDirectoryPage->numElements = 1;
 	rootDirectoryPage->nextDirectoryPage = -1;
+
+	printf("created directoryPage\n");
 	struct directory *rootDirectory = (struct directory *)malloc(sizeof(struct directory));
 	rootDirectory->parentDirectory = NULL;
 	rootDirectory->name = "/";
@@ -50,20 +57,31 @@ void initializeFileSystem(char *file){
 	rootDirectory->children = NULL;
 	rootDirectory->contents = -1;
 	rootDirectoryPage->directories = rootDirectory;
+	printf("created rootDirectory\n");
+
 	int fileData = fileno(fp);
-	int *map = mmap(NULL, 512, PROT_READ | PROT_WRITE, MAP_SHARED, fileData, 0);
+	int *map = mmap(NULL, 128, PROT_READ | PROT_WRITE, MAP_SHARED, fileData, 0);
+
+	printf("1\n");
+
 	map[0] = rootSector->freeMemoryPages[0];
+	printf("1.2\n");
 	map[1] = rootSector->freeMemoryPages[1];
+	printf("1.3\n");
 	map[2] = rootSector->directoryPages;
+	printf("1.4\n");
 	map[3] = rootSector->lastAllocatedPage;
 
-	if(msync(map, 512, MS_SYNC) == -1){
+	printf("2\n");
+	if(msync(map, 128, MS_SYNC) == -1){
+		printf("3\n");
 		close(fileData);
 		printf("we fucked up");
 		exit(EXIT_FAILURE);
 	}
-	if (munmap(map, 512) == -1)
+	if (munmap(map, 128) == -1)
     {
+				printf("4\n");
         close(fileData);
         perror("Error un-mmapping the file");
         exit(EXIT_FAILURE);
