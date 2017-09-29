@@ -28,6 +28,9 @@ char* generateData(char *source, size_t size)
 
 void initializeFileSystem(char *file){
 	FILE *fp = fopen(file, "w");
+	for(int i = 0; i < 512; i++){
+		fprintf(fp, "0");
+	}
 	fclose(fp);
 	fp = fopen(file, "w");
 	struct root_sector *rootSector =  (struct root_sector *) malloc(sizeof(struct root_sector));
@@ -60,17 +63,19 @@ void initializeFileSystem(char *file){
 	printf("created rootDirectory\n");
 
 	int fileData = fileno(fp);
-	int *map = mmap(NULL, 128, PROT_READ | PROT_WRITE, MAP_SHARED, fileData, 0);
+	char *map = mmap(0, 128, PROT_WRITE, MAP_SHARED, fileData, 0);
 
 	printf("1\n");
+	strcpy(map, "helloworld");
 
-	map[0] = rootSector->freeMemoryPages[0];
-	printf("1.2\n");
-	map[1] = rootSector->freeMemoryPages[1];
-	printf("1.3\n");
-	map[2] = rootSector->directoryPages;
-	printf("1.4\n");
-	map[3] = rootSector->lastAllocatedPage;
+
+	// map[0] = 'a';//rootSector->freeMemoryPages[0];
+	// printf("1.2\n");
+	// map[1] = rootSector->freeMemoryPages[1];
+	// printf("1.3\n");
+	// map[2] = rootSector->directoryPages;
+	// printf("1.4\n");
+	// map[3] = rootSector->lastAllocatedPage;
 
 	printf("2\n");
 	if(msync(map, 128, MS_SYNC) == -1){
