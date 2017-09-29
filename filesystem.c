@@ -26,6 +26,54 @@ char* generateData(char *source, size_t size)
 	return retval;
 }
 
+void initializeFileSystem(char *file){
+	FILE *fp = fopen(file, "w");
+	struct root_sector *rootSector =  (struct root_sector *) malloc(sizeof(struct root_sector));
+	rootSector->directoryPages = 3;
+	rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
+	rootSector->freeMemoryPages[0] = 1;
+	rootSector->freeMemoryPages[1] = 2;
+	rootSector->lastAllocatedPage = 3;
+	struct free_memory_page *freeMemoryPage = (struct free_memory_page *) malloc(2 * sizeof(struct free_memory_page));
+	freeMemoryPage[0].freePages = (char *) malloc(512 * sizeof(char));
+	freeMemoryPage[0].freePages[1] = 0xf0;
+	freeMemoryPage[1].freePages = (char *) malloc(512 * sizeof(char));
+	struct directory_page *rootDirectoryPage = (struct directory_page *) malloc(sizeof(struct directory_page));
+	rootDirectoryPage->empty = 1;
+	rootDirectoryPage->pageType = 1;
+	rootDirectoryPage->numElements = 1;
+	rootDirectoryPage->nextDirectoryPage = -1;
+	struct directory *rootDirectory = (struct directory *)malloc(sizeof(struct directory));
+	rootDirectory->parentDirectory = NULL;
+	rootDirectory->name = "/";
+	rootDirectory->isFile = 0;
+	rootDirectory->children = NULL;
+	rootDirectory->contents = -1;
+	rootDirectoryPage->directories = rootDirectory;
+	int fileData = fileno(fp);
+	int *map = mmap(NULL, 512, PROT_READ | PROT_WRITE, MAP_SHARED, fileData, 0);
+	map[0] = rootSector->freeMemoryPages[0];
+	map[1] = rootSector->freeMemoryPages[1];
+	map[2] = rootSector->directoryPages;
+	map[3] = rootSector->lastAllocatedPage;
+
+	if(msync(map, 512, MS_SYNC) == -1){
+		close(fileData);
+		printf("we fucked up");
+		exit(EXIT_FAILURE);
+	}
+	if (munmap(map, 512) == -1)
+    {
+        close(fileData);
+        perror("Error un-mmapping the file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Un-mmaping doesn't close the file, so we still need to do that.
+    close(fileData);
+		fclose(fp);
+
+}
 
 /*
  * filesystem() - loads in the filesystem and accepts commands
@@ -37,11 +85,19 @@ void filesystem(char *file)
 	 * open file, handle errors, create it if necessary.
 	 * should end up with map referring to the filesystem.
 	 */
-	int fd = open(file, O_RDONLY);
 
-	char *map = mmap(NULL,512, PROT_READ, MAP_SHARED,fd,0);
+	FILE * fp = fopen(file,"r");
+	if(fp == NULL){
+		initializeFileSystem(file);
+	}
 
-	struct root_sector root;
+	exit(0);
+
+	//int fd = open(file, O_RDONLY);
+
+	//char *map = mmap(NULL,512, PROT_READ, MAP_SHARED,fd,0);
+
+	//struct root_sector root;
 
 
 
@@ -85,7 +141,8 @@ void filesystem(char *file)
 			}
 			else
 			{
-				char *filename = buffer + 5;
+				/*char *filename = buffer + 5;
+				*/
 				char *space = strstr(buffer+5, " ");
 				*space = '\0';
 				//open and validate filename
@@ -118,8 +175,8 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "write ", 6))
 		{
-			char *filename = buffer + 6;
-			char *space = strstr(buffer+6, " ");
+			/*char *filename = buffer + 6;
+			*/char *space = strstr(buffer+6, " ");
 			*space = '\0';
 			size_t amt = atoi(space + 1);
 			space = strstr(space+1, " ");
@@ -130,7 +187,8 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "append ", 7))
 		{
-			char *filename = buffer + 7;
+			/*char *filename = buffer + 7;
+			*/
 			char *space = strstr(buffer+7, " ");
 			*space = '\0';
 			size_t amt = atoi(space + 1);
@@ -146,12 +204,14 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "get ", 4))
 		{
-			char *filename = buffer + 4;
-			char *space = strstr(buffer+4, " ");
+			/*char *filename = buffer + 4;
+			*/char *space = strstr(buffer+4, " ");
 			*space = '\0';
-			size_t start = atoi(space + 1);
+			/*size_t start = atoi(space + 1);
+			*/
 			space = strstr(space+1, " ");
-			size_t end = atoi(space + 1);
+			/*size_t end = atoi(space + 1);
+			*/
 			//get(filename, start, end);
 		}
 		else if(!strncmp(buffer, "rmdir ", 6))

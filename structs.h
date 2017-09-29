@@ -1,6 +1,6 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
-
+#include"structs.c"
 /*
  *
  * Define page/sector structures here as well as utility structures
@@ -12,7 +12,7 @@
  *
  */
   struct root_sector;
-  struct freeMemoryPage;
+  struct free_memory_page;
   struct directory;
   struct directory_page;
   struct data_page;
