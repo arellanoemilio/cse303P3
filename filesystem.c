@@ -8,7 +8,7 @@
 #include "support.h"
 #include "structs.h"
 #include "filesystem.h"
-
+#include <fcntl.h>
 
 /*
  * generateData() - Converts source from hex digits to
@@ -19,7 +19,8 @@ char* generateData(char *source, size_t size)
 {
 	char *retval = (char *)malloc((size >> 1) * sizeof(char));
 
-	for(size_t i=0; i<(size-1); i+=2)
+	size_t i;
+	for(i=0; i<(size-1); i+=2)
 	{
 		sscanf(&source[i], "%2hhx", &retval[i>>1]);
 	}
@@ -28,11 +29,12 @@ char* generateData(char *source, size_t size)
 
 void initializeFileSystem(char *file){
 	FILE *fp = fopen(file, "w");
-	for(int i = 0; i < 512; i++){
+	int i;
+	for(i = 0; i < 512; i++){
 		fprintf(fp, "0");
 	}
 	fclose(fp);
-	fp = fopen(file, "w");
+	//fp = fopen(file, "w");
 	struct root_sector *rootSector =  (struct root_sector *) malloc(sizeof(struct root_sector));
 	rootSector->directoryPages = 3;
 	rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
@@ -62,20 +64,23 @@ void initializeFileSystem(char *file){
 	rootDirectoryPage->directories = rootDirectory;
 	printf("created rootDirectory\n");
 
-	int fileData = fileno(fp);
-	char *map = mmap(0, 128, PROT_WRITE, MAP_SHARED, fileData, 0);
+	int fileData = open(file, O_RDWR);
+	int *map = (int *) mmap(NULL, 512, PROT_WRITE, MAP_SHARED, fileData, 0);
 
 	printf("1\n");
-	strcpy(map, "helloworld");
+	//strcpy(map, "helloworld");
+	if(map == MAP_FAILED){
+	  perror("mmap failed");
+	}
+	printf("%c\n", map[0]);
 
-
-	// map[0] = 'a';//rootSector->freeMemoryPages[0];
+	map[0] = rootSector->freeMemoryPages[0];
 	// printf("1.2\n");
-	// map[1] = rootSector->freeMemoryPages[1];
+	map[1] = rootSector->freeMemoryPages[1];
 	// printf("1.3\n");
-	// map[2] = rootSector->directoryPages;
+	map[2] = rootSector->directoryPages;
 	// printf("1.4\n");
-	// map[3] = rootSector->lastAllocatedPage;
+	map[3] = rootSector->lastAllocatedPage;
 
 	printf("2\n");
 	if(msync(map, 128, MS_SYNC) == -1){
@@ -85,16 +90,16 @@ void initializeFileSystem(char *file){
 		exit(EXIT_FAILURE);
 	}
 	if (munmap(map, 128) == -1)
-    {
-				printf("4\n");
-        close(fileData);
-        perror("Error un-mmapping the file");
-        exit(EXIT_FAILURE);
-    }
-
-    // Un-mmaping doesn't close the file, so we still need to do that.
+	  {
+	    printf("4\n");
+	    close(fileData);
+	    perror("Error un-mmapping the file");
+	    exit(EXIT_FAILURE);
+	  }
+	
+	// Un-mmaping doesn't close the file, so we still need to do that.
     close(fileData);
-		fclose(fp);
+    //   fclose(fp);
 
 }
 
