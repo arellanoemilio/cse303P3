@@ -30,11 +30,12 @@ char* generateData(char *source, size_t size)
 void initializeFileSystem(char *file){
 	FILE *fp = fopen(file, "w");
 	int i;
-	for(i = 0; i < 512; i++){
-		fprintf(fp, "0");
+	for(i = 0; i < 131072; i++){
+		fprintf(fp, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
+						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 	}
 	fclose(fp);
-	//fp = fopen(file, "w");
+
 	struct root_sector *rootSector =  (struct root_sector *) malloc(sizeof(struct root_sector));
 	rootSector->directoryPages = 3;
 	rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
@@ -65,42 +66,44 @@ void initializeFileSystem(char *file){
 	printf("created rootDirectory\n");
 
 	int fileData = open(file, O_RDWR);
+	//Mapping the Root sector
 	int *map = (int *) mmap(NULL, 512, PROT_WRITE, MAP_SHARED, fileData, 0);
-
-	printf("1\n");
-	//strcpy(map, "helloworld");
 	if(map == MAP_FAILED){
 	  perror("mmap failed");
 	}
-	printf("%c\n", map[0]);
-
 	map[0] = rootSector->freeMemoryPages[0];
-	// printf("1.2\n");
 	map[1] = rootSector->freeMemoryPages[1];
-	// printf("1.3\n");
 	map[2] = rootSector->directoryPages;
-	// printf("1.4\n");
 	map[3] = rootSector->lastAllocatedPage;
-
-	printf("2\n");
-	if(msync(map, 128, MS_SYNC) == -1){
-		printf("3\n");
+	if(msync(map, 512, MS_SYNC) == -1){
 		close(fileData);
 		printf("we fucked up");
 		exit(EXIT_FAILURE);
 	}
-	if (munmap(map, 128) == -1)
-	  {
-	    printf("4\n");
+	if (munmap(map, 512) == -1){
 	    close(fileData);
 	    perror("Error un-mmapping the file");
 	    exit(EXIT_FAILURE);
-	  }
-	
-	// Un-mmaping doesn't close the file, so we still need to do that.
-    close(fileData);
-    //   fclose(fp);
+	}
 
+	char *charMap = (char *) mmap(NULL, 512, PROT_WRITE, MAP_SHARED, fileData, 512);
+	if(charMap == MAP_FAILED){
+	  printf("%ld\n", sysconf(_SC_PAGE_SIZE));
+	}
+	memcpy(charMap, freeMemoryPage[0].freePages, 512);
+	if(msync(charMap, 512, MS_SYNC) == -1){
+		close(fileData);
+		printf("we fucked up");
+		exit(EXIT_FAILURE);
+	}
+	if (munmap(charMap, 512) == -1){
+	    close(fileData);
+	    perror("Error un-mmapping the file");
+	    exit(EXIT_FAILURE);
+	}
+
+	// Un-mmaping doesn't close the file, so we still need to do that.
+  close(fileData);
 }
 
 /*
