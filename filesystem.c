@@ -1,3 +1,4 @@
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,37 +67,30 @@ void initializeFileSystem(char *file){
 	printf("created rootDirectory\n");
 
 	int fileData = open(file, O_RDWR);
-	//Mapping the Root sector
-	int *map = (int *) mmap(NULL, 512, PROT_WRITE, MAP_SHARED, fileData, 0);
+	char *map = (char *) mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fileData, 0);
 	if(map == MAP_FAILED){
 	  perror("mmap failed");
 	}
-	map[0] = rootSector->freeMemoryPages[0];
-	map[1] = rootSector->freeMemoryPages[1];
-	map[2] = rootSector->directoryPages;
-	map[3] = rootSector->lastAllocatedPage;
-	if(msync(map, 512, MS_SYNC) == -1){
-		close(fileData);
-		printf("we fucked up");
-		exit(EXIT_FAILURE);
-	}
-	if (munmap(map, 512) == -1){
-	    close(fileData);
-	    perror("Error un-mmapping the file");
-	    exit(EXIT_FAILURE);
-	}
 
-	char *charMap = (char *) mmap(NULL, 512, PROT_WRITE, MAP_SHARED, fileData, 512);
-	if(charMap == MAP_FAILED){
-	  printf("%ld\n", sysconf(_SC_PAGE_SIZE));
-	}
-	memcpy(charMap, freeMemoryPage[0].freePages, 512);
-	if(msync(charMap, 512, MS_SYNC) == -1){
+	//Mapping the Root sector
+	writeIntToCharArr(&map[0],rootSector->freeMemoryPages[0]);
+	writeIntToCharArr(&map[4],rootSector->freeMemoryPages[1]);
+	writeIntToCharArr(&map[8],rootSector->directoryPages);
+	writeIntToCharArr(&map[12],rootSector->lastAllocatedPage);
+
+	//Coping the free bits
+	memcpy(&map[512], freeMemoryPage[0].freePages, 512);
+	memcpy(&map[512*2], freeMemoryPage[1].freePages, 512);
+
+	//Mapping the Addresses
+	writeDirectoriesToMap(&map[512*3], rootDirectoryPage, rootDirectory);
+
+	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
 		printf("we fucked up");
 		exit(EXIT_FAILURE);
 	}
-	if (munmap(charMap, 512) == -1){
+	if (munmap(map, 4096) == -1){
 	    close(fileData);
 	    perror("Error un-mmapping the file");
 	    exit(EXIT_FAILURE);
