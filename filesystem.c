@@ -11,6 +11,8 @@
 #include "filesystem.h"
 #include <fcntl.h>
 
+
+
 /*
  * generateData() - Converts source from hex digits to
  * binary data. Returns allocated pointer to data
@@ -83,7 +85,8 @@ void initializeFileSystem(char *file){
 	memcpy(&map[512*2], freeMemoryPage[1].freePages, 512);
 
 	//Mapping the Addresses
-	writeDirectoriesToMap(&map[512*3], rootDirectoryPage, rootDirectory);
+	writeDirectoriesToMap(&map[512*3], rootDirectoryPage, rootDirectory, freeMemoryPage,
+												fileData);
 
 	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
