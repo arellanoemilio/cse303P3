@@ -103,6 +103,13 @@ void initializeFileSystem(char *file){
   close(fileData);
 }
 
+// TODO: this will read the file and initiallize the 3 structures so that we can
+// use them throughout the program.
+readFileSystemFromFile(char *file, struct root_sector *rootSector,
+	struct free_memory_page *freeMemoryPage, struct directory *rootDirectory){
+
+}
+
 /*
  * filesystem() - loads in the filesystem and accepts commands
  */
@@ -120,12 +127,12 @@ void filesystem(char *file)
 	}
 
 	exit(0);
+	struct root_sector *rootSector;
+	struct free_memory_page *freeMemoryPage;
+	struct directory *rootDirectory;
 
-	//int fd = open(file, O_RDONLY);
+	readFileSystemFromFile(file, rootSector, freeMemoryPage, rootDirectory);
 
-	//char *map = mmap(NULL,512, PROT_READ, MAP_SHARED,fd,0);
-
-	//struct root_sector root;
 
 
 
