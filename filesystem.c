@@ -118,26 +118,24 @@ int readFileSystemFromFile(char *file,
 														struct directory_page *rootDirectory,
 														struct loaded_pages *loadedPages){
 	if(verify(file) == 1){
+		printf("the file was verified\n");
   	loadedPages->fileData = open(file, O_RDWR);
 		char *map = loadPage(loadedPages, 0);
 		if(map == MAP_FAILED){
 			perror("mmap failed");
 			return -1;
 		}
-		rootSector = (struct root_sector *)malloc(sizeof(struct root_sector));
 		rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
 		rootSector->directoryPages = getIntFromCharArr(&map[0]);
 		rootSector->freeMemoryPages[0] = getIntFromCharArr(&map[4]);
 		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[8]);
 		rootSector->lastAllocatedPage = getIntFromCharArr(&map[12]);
 
-		freeMemoryPage = (struct free_memory_page *)malloc(2 * sizeof(struct free_memory_page));
 		freeMemoryPage[0].freePages = (char *)malloc(512 *sizeof(char));
 		freeMemoryPage[1].freePages = (char *)malloc(512 *sizeof(char));
 		memcpy(freeMemoryPage[0].freePages, &map[512], 512);
 		memcpy(freeMemoryPage[1].freePages, &map[512 * 2], 512);
 
-		rootDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 		rootDirectory->empty = getIntFromCharArr(&map[512 * 3]);
 		rootDirectory->pageType = getIntFromCharArr(&map[512 * 3 + 4]);
 		rootDirectory->numElements = getIntFromCharArr(&map[512 * 3 + 8]);
@@ -147,6 +145,7 @@ int readFileSystemFromFile(char *file,
 
 	}
 	else{
+		printf("file was not verified");
 		return -1;
 	}
 	return 1;
@@ -168,18 +167,16 @@ void filesystem(char *file)
 		initializeFileSystem(file);
 	}
 
-	exit(0);
-	struct root_sector *rootSector;
-	struct free_memory_page *freeMemoryPage;
-	struct directory_page *rootDirectory;
+	struct root_sector *rootSector = (struct root_sector *)malloc(sizeof(struct root_sector));
+	struct free_memory_page *freeMemoryPage = (struct free_memory_page *)malloc (2 * sizeof(struct free_memory_page));
+	struct directory_page *rootDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 	//struct directort_page *currentDirectory;
-	struct loaded_pages *loadedPages;
+	struct loaded_pages *loadedPages = (struct loaded_pages *)malloc(sizeof(struct loaded_pages));
+	loadedPages->numberOfLoadedPages = 0;
+	loadedPages->loadedPagesList = (int *)malloc(0);
+	loadedPages->pages = (char **)malloc(0);
 
 	readFileSystemFromFile(file, rootSector, freeMemoryPage, rootDirectory, loadedPages);
-
-
-
-
 	/* You will probably want other variables here for tracking purposes */
 
 

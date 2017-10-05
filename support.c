@@ -89,8 +89,8 @@ int verify(char *filename){
 		return -1;
 	}
 	if (getIntFromCharArr(&map[0]) == 1){
-		if (getIntFromCharArr(&map[0]) == 2){
-			if (getIntFromCharArr(&map[0]) == 3){
+		if (getIntFromCharArr(&map[4]) == 2){
+			if (getIntFromCharArr(&map[8]) == 3){
 				close(fileData);
 				return 1;
 			}
