@@ -74,6 +74,38 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 	return newPage;
 }
 
+struct directory_page traverseToDirectory(struct directory_page currentDirectory,
+	 																				char *directoryName,
+																					struct loaded_pages *loadedPages){
+	struct directory_page directory;
+	directory.empty = 0;
+	char *token = strtok(directoryName)
+	while(token != NULL){
+		int pageNumber = pageContainsDirectory(current, token);
+		if(pageNumber > 0){
+			char *map = loadPage(loadedPages, pageNumber/8);
+			if(map == MAP_FAILED){
+				perror("mmap failed");
+				return NULL;
+			}
+			if(getIntFromCharArr(&map[512 *(pagenumber % 8) + 4]) == 1){
+				directory = loadMapIntoPage(&map[512 * (pagenumber % 8)]);
+			}
+			else{
+				return NULL;
+			}
+		}
+		else{
+			return NULL;
+		}
+	}
+	return directory;
+}
+
+struct directory_page loadMapIntoPage(char * map){
+	
+}
+
 int verify(char *filename){
 	FILE *fp = fopen(filename, "r");
 	if(fp == NULL){
@@ -138,4 +170,8 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset){
 	}
 
 	return index;
+}
+
+int removeDirectory(struct directory_page currentDirectory, char *directoryName, struct loaded_pages *loadedPages){
+	currentDirectory = traverseToDirectory(currentDirectory,directoryName, loadedPages);
 }

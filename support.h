@@ -49,9 +49,29 @@ int verify(char *filename);
 char * loadPage(struct loaded_pages *loadedPages, int pageOffset);
 
 /*
+ * Retruns the loaded directory_page requested by the name, returns NULL
+ * if the directory is not found, the directory is a file, the directory is
+ * located in an invalid location.
+ */
+struct directory_page traverseToDirectory(struct directory_page currentDirectory,
+	 																				char *directoryName,
+																					struct loaded_pages *loadedPages);
+
+/*
+ * Returns an initialized directory_page from a 512 byte map.
+ */
+struct directory_page loadMapIntoPage(char * map);
+
+/*
  * Stores the page offset given
  * returns the page -1 if failed
  */
 int updatePage(struct loaded_pages *loadedPages, int pageOffset);
+
+/*
+ * Given a currentDirectory, this method removes the directory specified if it
+ * is empty
+ */
+int removeDirectory(struct directory_page currentDirectory, char *directoryName, struct loaded_pages *loadedPages);
 
 #endif
