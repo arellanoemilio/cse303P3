@@ -1,6 +1,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "support.h"
 
 /*
@@ -18,7 +21,6 @@ void check_student(char * progname)
 	printf("\n");
 }
 
-
 void writeIntToCharArr(char * charPointer, int integer){
 	charPointer[0] = integer & 0x000000ff;
 	charPointer[1] = (integer >> 8) & 0x000000ff;
@@ -26,11 +28,20 @@ void writeIntToCharArr(char * charPointer, int integer){
 	charPointer[3] = (integer >> 24) & 0x000000ff;
 }
 
+int getIntFromCharArr(char *charPointer){
+	int i = 0;
+	i = ((charPointer[3] & 0xff) << 24) | i ;
+	i = ((charPointer[2] & 0xff) << 16) | i;
+	i = ((charPointer[1] & 0xff) << 8) | i;
+	i = (charPointer[0] & 0xff) | i;
+	return i;
+}
+
 int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 	int newPage = -1;
 	while(newPage < 0){
-		int byteLocation = lastAllocatedPage / 8;
-		int bitPosition = lastAllocatedPage % 8 + 1;
+		int byteLocation = *lastAllocatedPage / 8;
+		int bitPosition = *lastAllocatedPage % 8 + 1;
 		if (*lastAllocatedPage < 4096){
 			if(bitPosition == 8){
 				bitPosition = 0;
@@ -63,94 +74,68 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 	return newPage;
 }
 
-//TODO: finish this edge case
-nextPageSetup(int pageNumber, int *spaceAvailable, int fd){
-	int offset = pagenumber / 8;
-	char *map = (char *) mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fd, offset * 4096);
-}
-
-void writeDirectory(int * spaceAvailable, struct directory current, char *map,
-struct free_memory_page *bitMap, int *lastAllocatedPage, int nextPage, int fd){
-	int strLength = strlen(current.name);
-	if(*spaceAvailable > strLength + 9){
-		strcpy(map[0], current.name);
-		*spaceAvailable  -= strLength+9;
-		writeIntToCharArr(&map[strLength+1], current.isFile);
-		writeIntToCharArr(&map[strLength+5], current.contents);
-		if(current.isFile == 0 && current.contents > 0 ){
-			for(int i = 0; i <  current.contents; i++){
-				writeDirectory(spaceAvailable, current.children[i], map[strLength+9],
-					bitMap, lastAllocatedPage, nextPage,fd);
-			}
-		}
-	}
-	else{
-		int pageNumber;
-		if(nextPage == -1){
-			pageNumber = findNewPage(bitMap, lastAllocatedPage)
-		}
-		else{
-			pageNumber = nextPage;
-		}
-		map = nextPageSetup(pageNumber, spaceAvailable, fd);
-		strcpy(map[0], current.name);
-		*spaceAvailable  -= strLength+9;
-		writeIntToCharArr(&map[strLength+1], current.isFile);
-		writeIntToCharArr(&map[strLength+5], current.contents);
-		if(current.isFile == 0 && current.contents > 0 ){
-			for(int i = 0; i <  current.contents; i++){
-				writeDirectory(spaceAvailable, current.children[i], map[strLength+9],
-					bitMap, lastAllocatedPage, nextPage,fd);
-			}
-		}
-	}
-}
-
-void writeDirectoriesToMap(char * map, struct directory_page *rootDirectoryPage,
-struct directory *rootDirectory, struct free_memory_page *bitMap,
-int *lastAllocatedPage, int fd){
-	int spaceAvailable = 496;
-	struct directory current = *rootDirectory;
-	rootDirectoryPage->numElements = 0;
-	writeIntToCharArr(&map[0], rootDirectoryPage->emty);
-	writeIntToCharArr(&map[4], rootDirectoryPage->pageType);
-	writeIntToCharArr(&map[12], rootDirectoryPage->nextDirectoryPage);
-	//order to save info
-	//save the name
-	//save the is file
-	//if not is file save number of children
-	//if is file save contents
-	//total size = size of name + 4(is file) + 4 (contents/ number of children)
-	writeDirectory(&spaceAvailable, current, &map[16], bitMap, lastAllocatedPage,
-								rootDirectoryPage->nextDirectoryPage,fd);
-
-}
-
-
 int verify(char *filename){
 	FILE *fp = fopen(filename, "r");
-	if(fp ==NULL){
+	if(fp == NULL){
 		return -1;
 	}
 	fclose(fp);
 
-	int fileData = open(file, O_RDWR);
+	int fileData = open(filename, O_RDWR);
 	char *map = (char *) mmap(NULL, 4096, PROT_READ, MAP_SHARED, fileData, 0);
 	if(map == MAP_FAILED){
 	  perror("mmap failed");
+		close(fileData);
 		return -1;
 	}
-	int good = map[0] & 0x01;
-	if (!good){
-		return -1;
+	if (getIntFromCharArr(&map[0]) == 1){
+		if (getIntFromCharArr(&map[0]) == 2){
+			if (getIntFromCharArr(&map[0]) == 3){
+				close(fileData);
+				return 1;
+			}
+		}
 	}
-	good = map[4] & 0x02;
-	if (!good){
-		return -1;
+	close(fileData);
+	return -1;
+}
+
+char * loadPage(struct loaded_pages *loadedPages, int pageOffset){
+	char * map;
+	int index = -1;
+	for (int i = 0; i < loadedPages->numberOfLoadedPages; i++){
+		if(loadedPages->loadedPagesList[i] == pageOffset){
+			index = i;
+			i = loadedPages->numberOfLoadedPages;
+		}
 	}
-	good = map[8] & 0x03;
-	if (!good){
-		return -1;
+	if(index != -1){
+		map = loadedPages->pages[index];
 	}
-	return 1;
+	else{
+		map = (char *) mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, loadedPages->fileData, 4096 *pageOffset);
+		loadedPages->numberOfLoadedPages++;
+		loadedPages->loadedPagesList = realloc(loadedPages->loadedPagesList, loadedPages->numberOfLoadedPages * sizeof(int));
+		loadedPages->pages = realloc(loadedPages->pages, loadedPages->numberOfLoadedPages * sizeof(char *));
+		loadedPages->loadedPagesList[loadedPages->numberOfLoadedPages -1] = pageOffset;
+		loadedPages->pages[loadedPages->numberOfLoadedPages -1] = map;
+	}
+
+	return map;
+}
+
+int updatePage(struct loaded_pages *loadedPages, int pageOffset){
+	int index = -1;
+	for (int i = 0; i < loadedPages->numberOfLoadedPages; i++){
+		if(loadedPages->loadedPagesList[i] == pageOffset){
+			index = i;
+			i = loadedPages->numberOfLoadedPages;
+		}
+	}
+	if(index != -1){
+		char *map = loadedPages->pages[index];
+		index = msync(map, 4096, MS_SYNC);
+	}
+
+	return index;
 }

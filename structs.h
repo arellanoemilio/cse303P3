@@ -13,7 +13,8 @@
  */
   struct root_sector;
   struct free_memory_page;
-  struct directory;
+  struct file_location;
+  struct loaded_pages;
   struct directory_page;
   struct data_page;
 

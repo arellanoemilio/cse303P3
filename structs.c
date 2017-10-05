@@ -20,18 +20,17 @@ struct free_memory_page{
   char *freePages;
 };
 
-//This one i feel needs to change we should discuss this one more
-struct directory{
-  struct directory *parentDirectory;
-  // Just the name of that folder
-  char *name;
-  int isFile;
-  // If is file is 1 then children would be NULL
-  struct directory *children;
-  // If is file is 0 then contenents would be -1
-  int contents;
+struct loaded_pages{
+  int fileData;
+  int numberOfLoadedPages;
+  int *loadedPagesList;
+  char **pages;
 };
 
+struct file_location{
+  char *name;
+  int location;
+};
 
 struct directory_page{
     int empty;
@@ -39,8 +38,8 @@ struct directory_page{
     int pageType;
     int numElements;
     int nextDirectoryPage;
-    //IMPORTANT: We should always allocate 500 bytes for directories
-    struct directory *directories;
+    //IMPORTANT: We should always allocate 496 bytes for directories
+    char *files;
 };
 
 struct data_page{

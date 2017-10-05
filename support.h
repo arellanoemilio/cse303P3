@@ -1,5 +1,6 @@
 #ifndef SUPPORT_H__
 #define SUPPORT_H__
+#include "structs.h"
 
 /*
  * Store information about the student who completed the assignment, to
@@ -26,16 +27,31 @@ void check_student(char *);
 void writeIntToCharArr(char *, int);
 
 /*
- * This fuction take in an a directory and directory_page and intends to map it
- * to the char *. In the case that we run out of space in directory_page then
- * the function will seek a new page in the file system where it will be able to
- * write the rest of the directories. In the case that directory page is already
- * pointing to a next directory_page then that is the page where the mapping
- * continues. If the mapping completes and the directory_page is poiningt to a
- * next directory page then that page is emptied and the directory page stops
- * pointing to it.
+ * Given a set of two free_memory_pages and the last allocated page number this
+ * method returns the next allocated page.
  */
-void writeDirectoriesToMap(char *, struct directory_page *, struct directory *);
+int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage);
 
+/*
+ * This Function take in a char pointer of at least 4 bytes and transforms the
+ * four bytes into an int. The bytes are read as least significan first.
+ */
+int getIntFromCharArr(char *charPointer);
+
+/*
+ * returns 1 if filename is a valid filesytem else returns -1
+ */
+int verify(char *filename);
+
+/*
+ * Returns the 8 consecutive pages of 512 byte pages as a char pointer
+ */
+char * loadPage(struct loaded_pages *loadedPages, int pageOffset);
+
+/*
+ * Stores the page offset given
+ * returns the page -1 if failed
+ */
+int updatePage(struct loaded_pages *loadedPages, int pageOffset);
 
 #endif

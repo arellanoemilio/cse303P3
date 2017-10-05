@@ -5,11 +5,11 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-#include <sys/mman.h>
 #include "support.h"
 #include "structs.h"
 #include "filesystem.h"
 #include <fcntl.h>
+#include <sys/mman.h>
 
 
 
@@ -30,7 +30,10 @@ char* generateData(char *source, size_t size)
 	return retval;
 }
 
-void initializeFileSystem(char *file){
+/*
+ * Creates a file with the name file and initializes a filesytem in it
+ */
+int initializeFileSystem(char *file){
 	FILE *fp = fopen(file, "w");
 	int i;
 	for(i = 0; i < 131072; i++){
@@ -46,32 +49,31 @@ void initializeFileSystem(char *file){
 	rootSector->freeMemoryPages[1] = 2;
 	rootSector->lastAllocatedPage = 3;
 	printf("created rootSector\n");
+
 	struct free_memory_page *freeMemoryPage = (struct free_memory_page *) malloc(2 * sizeof(struct free_memory_page));
 	freeMemoryPage[0].freePages = (char *) malloc(512 * sizeof(char));
 	freeMemoryPage[0].freePages[1] = 0xf0;
 	freeMemoryPage[1].freePages = (char *) malloc(512 * sizeof(char));
-
 	printf("created freePages\n");
-	struct directory_page *rootDirectoryPage = (struct directory_page *) malloc(sizeof(struct directory_page));
-	rootDirectoryPage->empty = 1;
-	rootDirectoryPage->pageType = 1;
-	rootDirectoryPage->numElements = 1;
-	rootDirectoryPage->nextDirectoryPage = -1;
 
+	struct directory_page *rootDirectory = (struct directory_page *) malloc(sizeof(struct directory_page));
+	rootDirectory->empty = 1;
+	rootDirectory->pageType = 1;
+	rootDirectory->numElements = 1;
+	rootDirectory->nextDirectoryPage = 0xffffffff;
+	rootDirectory->files = (char *) malloc(496 * sizeof(char));
+	rootDirectory->files[0] = '.';
+	rootDirectory->files[2] = '\0';
+	writeIntToCharArr(&(rootDirectory->files[3]),3);
 	printf("created directoryPage\n");
-	struct directory *rootDirectory = (struct directory *)malloc(sizeof(struct directory));
-	rootDirectory->parentDirectory = NULL;
-	rootDirectory->name = "/";
-	rootDirectory->isFile = 0;
-	rootDirectory->children = NULL;
-	rootDirectory->contents = -1;
-	rootDirectoryPage->directories = rootDirectory;
-	printf("created rootDirectory\n");
+
 
 	int fileData = open(file, O_RDWR);
 	char *map = (char *) mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fileData, 0);
 	if(map == MAP_FAILED){
 	  perror("mmap failed");
+		close(fileData);
+		return -1;
 	}
 
 	//Mapping the Root sector
@@ -85,8 +87,11 @@ void initializeFileSystem(char *file){
 	memcpy(&map[512*2], freeMemoryPage[1].freePages, 512);
 
 	//Mapping the Addresses
-	writeDirectoriesToMap(&map[512*3], rootDirectoryPage, rootDirectory, freeMemoryPage,
-												fileData);
+	writeIntToCharArr(&map[512*3], rootDirectory->empty);
+	writeIntToCharArr(&map[512*3+4], rootDirectory->pageType);
+	writeIntToCharArr(&map[512*3+8], rootDirectory->numElements);
+	writeIntToCharArr(&map[512*3+12], rootDirectory->nextDirectoryPage);
+	memcpy(&map[512*3+16],rootDirectory->files,496);
 
 	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
@@ -101,13 +106,50 @@ void initializeFileSystem(char *file){
 
 	// Un-mmaping doesn't close the file, so we still need to do that.
   close(fileData);
+	return 1;
 }
 
-// TODO: this will read the file and initiallize the 3 structures so that we can
-// use them throughout the program.
-readFileSystemFromFile(char *file, struct root_sector *rootSector,
-	struct free_memory_page *freeMemoryPage, struct directory *rootDirectory){
+/*
+ * Inicializes a filesytem in it
+ */
+int readFileSystemFromFile(char *file,
+														struct root_sector *rootSector,
+														struct free_memory_page *freeMemoryPage,
+														struct directory_page *rootDirectory,
+														struct loaded_pages *loadedPages){
+	if(verify(file) == 1){
+  	loadedPages->fileData = open(file, O_RDWR);
+		char *map = loadPage(loadedPages, 0);
+		if(map == MAP_FAILED){
+			perror("mmap failed");
+			return -1;
+		}
+		rootSector = (struct root_sector *)malloc(sizeof(struct root_sector));
+		rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
+		rootSector->directoryPages = getIntFromCharArr(&map[0]);
+		rootSector->freeMemoryPages[0] = getIntFromCharArr(&map[4]);
+		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[8]);
+		rootSector->lastAllocatedPage = getIntFromCharArr(&map[12]);
 
+		freeMemoryPage = (struct free_memory_page *)malloc(2 * sizeof(struct free_memory_page));
+		freeMemoryPage[0].freePages = (char *)malloc(512 *sizeof(char));
+		freeMemoryPage[1].freePages = (char *)malloc(512 *sizeof(char));
+		memcpy(freeMemoryPage[0].freePages, &map[512], 512);
+		memcpy(freeMemoryPage[1].freePages, &map[512 * 2], 512);
+
+		rootDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
+		rootDirectory->empty = getIntFromCharArr(&map[512 * 3]);
+		rootDirectory->pageType = getIntFromCharArr(&map[512 * 3 + 4]);
+		rootDirectory->numElements = getIntFromCharArr(&map[512 * 3 + 8]);
+		rootDirectory->nextDirectoryPage = getIntFromCharArr(&map[512 * 3 + 12]);
+		rootDirectory->files = (char *)malloc(496 * sizeof(char));
+		memcpy(rootDirectory->files,&map[512 * 3 + 16], 496);
+
+	}
+	else{
+		return -1;
+	}
+	return 1;
 }
 
 /*
@@ -129,9 +171,11 @@ void filesystem(char *file)
 	exit(0);
 	struct root_sector *rootSector;
 	struct free_memory_page *freeMemoryPage;
-	struct directory *rootDirectory;
+	struct directory_page *rootDirectory;
+	//struct directort_page *currentDirectory;
+	struct loaded_pages *loadedPages;
 
-	readFileSystemFromFile(file, rootSector, freeMemoryPage, rootDirectory);
+	readFileSystemFromFile(file, rootSector, freeMemoryPage, rootDirectory, loadedPages);
 
 
 
