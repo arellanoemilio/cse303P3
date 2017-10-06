@@ -74,4 +74,9 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset);
  */
 int removeDirectory(struct directory_page currentDirectory, char *directoryName, struct loaded_pages *loadedPages);
 
+/*
+ * converts a list of file_locations into a character array for purpose of
+ * mapping
+ */
+char * fileLocationsToCharArr(struct file_location *filesLocations, int numElements, , int *numPages);
 #endif

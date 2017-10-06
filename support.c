@@ -51,6 +51,7 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 			if(available){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
+				bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] | (0x01 << bitPosition)
 			}
 			else{
 				bitPosition++;
@@ -65,6 +66,7 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 			if(available){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
+				bitMap[1].freePages[byteLocation] = bitMap[1].freePages[byteLocation] | (0x01 << bitPosition)
 			}
 			else{
 				bitPosition++;
@@ -103,7 +105,24 @@ struct directory_page traverseToDirectory(struct directory_page currentDirectory
 }
 
 struct directory_page loadMapIntoPage(char * map){
-	
+	struct directory_page directory;
+	directory.empty = getIntFromCharArr(&map[0]);
+	if(directory.empty == 1){
+		directory.pageType = getIntFromCharArr(&map[4]);
+		if(directory.pageType == 1){
+			directory.numElements = getIntFromCharArr(&map[8]);
+			directory.nextDirectoryPage = getIntFromCharArr(&map[12]);
+			directory.files = (char *) malloc(496 * sizeof(char));
+			memcpy(directory.file, &map[16], 496);
+		}
+		else{
+			directory.empty = 0;
+		}
+	}
+	else{
+		directory.empty = 0;
+	}
+	return directory;
 }
 
 int verify(char *filename){
@@ -173,5 +192,71 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset){
 }
 
 int removeDirectory(struct directory_page currentDirectory, char *directoryName, struct loaded_pages *loadedPages){
-	currentDirectory = traverseToDirectory(currentDirectory,directoryName, loadedPages);
+	struct directory_page parentDirectory;
+	currentDirectory = traverseToDirectory(currentDirectory, directoryName, loadedPages);
+	if(currentDirectory.numElements == 2){
+		if(strncmp("..", &map[6],2) == 1){
+			int parentLocation = getIntFromCharArr(&map[10]);
+			char *map = loadPage(loadedPages, parentLocation/8);
+			parentDirectory = loadMapIntoPage(&map[parentLocation % 8]);
+			for(int i = 0; i < parentDirectory.numElements; i++){
+				//TODO
+			}
+		}
+	}
+}
+
+char * fileLocationsToCharArr(struct file_location *filesLocations, int numElements, int *numPages){
+	int allocations = 1
+	char * map = (char *)malloc(496 * sizeof(char));
+	int freeSpace = 496;
+	int index = 0;
+	for(int i = 0; i < numElements; i++){
+		int strIndex, strLength;
+		strIndex = 0;
+		strlength = strlen(filesLocations[i].name) + 1;
+		if(freeSpace > strlength + 4){
+			strcpy(&map[index], filesLocations[i].name);
+			index += strlength;
+			writeIntToCharArr(&map[index],filesLocations[i].location);
+			index += 4;
+		}
+		else{
+			allocations++;
+			map = realloc(map, (496 * allocations)*sizeof(char));
+			i--;
+		}
+	}
+
+	numPages = allocations;
+	return map;
+}
+
+int mapDirectoryToMap(char *mapPage, struct directory_page *rootDirectory, struct loaded_pages *loadedPages){
+	int numPages = 1;
+	int nextDirectoryPage = rootDirectory->nextDirectoryPage;
+	char * files = fileLocationsToCharArr(rootDirectory->filesLocations, rootDirectory->numElements, &numPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+	for(int i = 0; i < numPage; i++){
+		if(i > 0){
+			int nextPage = getIntFromCharArr(&map[12]);
+			if(nextPage != -1){
+				char *map2 = loadpage(loadedPages, nextPage / 8);
+				map = &map2[512 * (nextPage % 8)];
+				nextDirectoryPage = getIntFromCharArr(&map[12]);
+			}
+			else{
+				int nextPage = findNewPage(bitMap,lastAllocatedPage);
+				char *map2 = loadpage(loadedPages, nextPage / 8);
+				writeIntToCharArr(&map[12], nextPage);
+				map = &map2[512 * (nextPage % 8)];
+				nextDirectoryPage = -1;
+			}
+		}
+		writeIntToCharArr(&map[0], rootDirectory->empty);
+		writeIntToCharArr(&map[4], rootDirectory->pageType);
+		writeIntToCharArr(&map[8], rootDirectory->numElements);
+		writeIntToCharArr(&map[12], nextDirectoryPage);
+		memcpy(&map[16],&file[i * 496],496);
+	}
+	return 1;
 }
