@@ -61,10 +61,9 @@ int initializeFileSystem(char *file){
 	rootDirectory->pageType = 1;
 	rootDirectory->numElements = 1;
 	rootDirectory->nextDirectoryPage = 0xffffffff;
-	rootDirectory->files = (char *) malloc(496 * sizeof(char));
-	rootDirectory->files[0] = '.';
-	rootDirectory->files[2] = '\0';
-	writeIntToCharArr(&(rootDirectory->files[3]),3);
+	rootDirectory->filesLocations = (struct file_location *) malloc(sizeof(struct file_location));
+	rootDirectory->filesLocations[0].name = ".";
+	rootDirectory->filesLocations[0].location = 3;
 	printf("created directoryPage\n");
 
 
@@ -87,11 +86,10 @@ int initializeFileSystem(char *file){
 	memcpy(&map[512*2], freeMemoryPage[1].freePages, 512);
 
 	//Mapping the Addresses
-	writeIntToCharArr(&map[512*3], rootDirectory->empty);
-	writeIntToCharArr(&map[512*3+4], rootDirectory->pageType);
-	writeIntToCharArr(&map[512*3+8], rootDirectory->numElements);
-	writeIntToCharArr(&map[512*3+12], rootDirectory->nextDirectoryPage);
-	memcpy(&map[512*3+16],rootDirectory->files,496);
+
+	mapDirectoryToMap(&map[512*3], rootDirectory);
+
+
 
 	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
