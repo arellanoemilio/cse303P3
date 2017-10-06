@@ -224,6 +224,8 @@ void filesystem(char *file)
 			      // printf("%d\n", num);
 			      
 			      int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
+			    
+                              
 			      printf("%d\n", num); 
 			    }
 			  //fprintf( stdout, strlen(loadedPages->pages[0]) );
