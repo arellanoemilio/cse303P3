@@ -32,6 +32,7 @@ void writeIntToCharArr(char *, int);
  */
 int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage);
 
+int freeMemoryPage(struct free_memory_page *bitMap, int *lastAllocatedPage);
 /*
  * This Function take in a char pointer of at least 4 bytes and transforms the
  * four bytes into an int. The bytes are read as least significan first.
@@ -49,19 +50,21 @@ int verify(char *filename);
 char * loadPage(struct loaded_pages *loadedPages, int pageOffset);
 
 /*
- * Retruns the loaded directory_page requested by the name, returns NULL
+ * Retruns page number of the requested by the folder name, returns -1
  * if the directory is not found, the directory is a file, the directory is
- * located in an invalid location.
+ * located in an invalid location. This also changes the value of
+ * currentDirectory to the directory traversed to.
  */
-struct directory_page traverseToDirectory(struct directory_page currentDirectory,
-	 																				char *directoryName,
-																					struct loaded_pages *loadedPages);
+int traverseToDirectory(struct directory_page *currentDirectory, char *directoryName, struct loaded_pages *loadedPages);
+
+int traverseToFileDirectory(struct directory_page *currentDirectory, char *directoryName, struct loaded_pages *loadedPages, int *filePage);
+
+int pageContainsDirectory(struct directory_page *current, char *folderName);
 
 /*
  * Returns an initialized directory_page from a 512 byte map.
+ struct directory_page loadMapIntoPage(char * map);
  */
-struct directory_page loadMapIntoPage(char * map);
-
 /*
  * Stores the page offset given
  * returns the page -1 if failed
@@ -72,11 +75,22 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset);
  * Given a currentDirectory, this method removes the directory specified if it
  * is empty
  */
-int removeDirectory(struct directory_page currentDirectory, char *directoryName, struct loaded_pages *loadedPages);
+int removeDirectory(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
+int removeFile(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
+int removeRecursively(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
 
 /*
  * converts a list of file_locations into a character array for purpose of
  * mapping
  */
-char * fileLocationsToCharArr(struct file_location *filesLocations, int numElements, , int *numPages);
+char * fileLocationsToCharArr(struct file_location *filesLocations, int numElements,int *numPages);
+
+int mapDirectoryToMap(char *map, struct directory_page *rootDirectory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
+int loadDirectoryFromMap(struct directory_page *directory, char *map, struct loaded_pages *loadedPages);
+
+void directoryCopy(struct directory_page *dest, const struct directory_page *source);
+
 #endif

@@ -33,7 +33,7 @@ char* generateData(char *source, size_t size)
 /*
  * Creates a file with the name file and initializes a filesytem in it
  */
-int initializeFileSystem(char *file){
+int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 	FILE *fp = fopen(file, "w");
 	int i;
 	for(i = 0; i < 131072; i++){
@@ -86,10 +86,7 @@ int initializeFileSystem(char *file){
 	memcpy(&map[512*2], freeMemoryPage[1].freePages, 512);
 
 	//Mapping the Addresses
-
-	mapDirectoryToMap(&map[512*3], rootDirectory);
-
-
+	mapDirectoryToMap(&map[512*3], rootDirectory, loadedPages, freeMemoryPage, &rootSector->lastAllocatedPage);
 
 	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
@@ -110,11 +107,8 @@ int initializeFileSystem(char *file){
 /*
  * Inicializes a filesytem in it
  */
-int readFileSystemFromFile(char *file,
-														struct root_sector *rootSector,
-														struct free_memory_page *freeMemoryPage,
-														struct directory_page *rootDirectory,
-														struct loaded_pages *loadedPages){
+int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct free_memory_page *bitMap,
+													 struct directory_page *rootDirectory, struct loaded_pages *loadedPages){
 	if(verify(file) == 1){
 		printf("the file was verified\n");
   	loadedPages->fileData = open(file, O_RDWR);
@@ -129,18 +123,12 @@ int readFileSystemFromFile(char *file,
 		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[8]);
 		rootSector->lastAllocatedPage = getIntFromCharArr(&map[12]);
 
-		freeMemoryPage[0].freePages = (char *)malloc(512 *sizeof(char));
-		freeMemoryPage[1].freePages = (char *)malloc(512 *sizeof(char));
-		memcpy(freeMemoryPage[0].freePages, &map[512], 512);
-		memcpy(freeMemoryPage[1].freePages, &map[512 * 2], 512);
+		bitMap[0].freePages = (char *)malloc(512 *sizeof(char));
+		bitMap[1].freePages = (char *)malloc(512 *sizeof(char));
+		memcpy(bitMap[0].freePages, &map[512], 512);
+		memcpy(bitMap[1].freePages, &map[512 * 2], 512);
 
-		rootDirectory->empty = getIntFromCharArr(&map[512 * 3]);
-		rootDirectory->pageType = getIntFromCharArr(&map[512 * 3 + 4]);
-		rootDirectory->numElements = getIntFromCharArr(&map[512 * 3 + 8]);
-		rootDirectory->nextDirectoryPage = getIntFromCharArr(&map[512 * 3 + 12]);
-		rootDirectory->files = (char *)malloc(496 * sizeof(char));
-		memcpy(rootDirectory->files,&map[512 * 3 + 16], 496);
-
+		loadDirectoryFromMap(rootDirectory, &map[512 * 3], loadedPages);
 	}
 	else{
 		printf("file was not verified");
@@ -160,23 +148,24 @@ void filesystem(char *file)
 	 * should end up with map referring to the filesystem.
 	 */
 
+	struct loaded_pages *loadedPages = (struct loaded_pages *)malloc(sizeof(struct loaded_pages));
+ 	loadedPages->numberOfLoadedPages = 0;
+ 	loadedPages->loadedPagesList = (int *)malloc(0);
+ 	loadedPages->pages = (char **)malloc(0);
+
 	FILE * fp = fopen(file,"r");
 	if(fp == NULL){
-		initializeFileSystem(file);
+		initializeFileSystem(file, loadedPages);
 	}
 
 	struct root_sector *rootSector = (struct root_sector *)malloc(sizeof(struct root_sector));
-	struct free_memory_page *freeMemoryPage = (struct free_memory_page *)malloc (2 * sizeof(struct free_memory_page));
+	struct free_memory_page *bitMap = (struct free_memory_page *)malloc (2 * sizeof(struct free_memory_page));
 	struct directory_page *rootDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
-	//struct directort_page *currentDirectory;
-	struct loaded_pages *loadedPages = (struct loaded_pages *)malloc(sizeof(struct loaded_pages));
-	loadedPages->numberOfLoadedPages = 0;
-	loadedPages->loadedPagesList = (int *)malloc(0);
-	loadedPages->pages = (char **)malloc(0);
+	struct directory_page *currentDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 
-	readFileSystemFromFile(file, rootSector, freeMemoryPage, rootDirectory, loadedPages);
+	readFileSystemFromFile(file, rootSector, bitMap, rootDirectory, loadedPages);
 	/* You will probably want other variables here for tracking purposes */
-
+	directoryCopy(currentDirectory, rootDirectory);
 
 	/*
 	 * Accept commands, calling accessory functions unless
@@ -211,7 +200,8 @@ void filesystem(char *file)
 		{
 			if(isdigit(buffer[5]))
 			{
-			  char * charArr = malloc(512);
+				//TODO: commented it out for compiler reasons
+			  // char * charArr = malloc(512);
 			  int pageNum = atoi(buffer + 5);
 			  int pageOffset = pageNum / 8;
 			  loadPage(loadedPages, pageOffset);
@@ -220,9 +210,9 @@ void filesystem(char *file)
 			    {
 			      // int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
 			      // printf("%d\n", num);
-			      
+
 			      int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
-			      printf("%d\n", num); 
+			      printf("%d\n", num);
 			    }
 			  //fprintf( stdout, strlen(loadedPages->pages[0]) );
 			  printf("%s", "here");
@@ -307,14 +297,32 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "rmdir ", 6))
 		{
-			//rmdir(buffer + 6);
+			if(*(buffer+6) != '/'){
+				removeDirectory(currentDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+			else{
+				removeDirectory(rootDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+
+			rmdir(buffer + 6);
 		}
 		else if(!strncmp(buffer, "rm -rf ", 7))
 		{
-			//rmForce(buffer + 7);
+			if(*(buffer+6) != '/'){
+				removeRecursively(currentDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+			else{
+				removeRecursively(rootDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
 		}
 		else if(!strncmp(buffer, "rm ", 3))
 		{
+			if(*(buffer+6) != '/'){
+				removeFile(currentDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+			else{
+				removeFile(rootDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
 			//rm(buffer + 3);
 		}
 		else if(!strncmp(buffer, "scandisk", 8))
