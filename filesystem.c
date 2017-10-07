@@ -60,7 +60,7 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 	rootDirectory->empty = 1;
 	rootDirectory->pageType = 1;
 	rootDirectory->numElements = 1;
-	rootDirectory->nextDirectoryPage = 0xffffffff;
+	rootDirectory->nextDirectoryPage = -1;
 	rootDirectory->filesLocations = (struct file_location *) malloc(sizeof(struct file_location));
 	rootDirectory->filesLocations[0].name = ".";
 	rootDirectory->filesLocations[0].location = 3;
@@ -204,30 +204,45 @@ void filesystem(char *file)
 		{
 			if(isdigit(buffer[5]))
 			{
-				//TODO: commented it out for compiler reasons
-			  // char * charArr = malloc(512);
 			  int pageNum = atoi(buffer + 5);
 			  int pageOffset = pageNum / 8;
-			  loadPage(loadedPages, pageOffset);
-			  int i;
-			  for(i = 0; i < (512/4); i++)
-			    {
-			      // int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
-			      // printf("%d\n", num);
 
-			      int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
-			      printf("%d\n", num);
+			  unsigned char *mapper = (unsigned char*) loadPage(loadedPages, pageOffset);
+			  int internalOffet = pageNum % 8;
+			  int startByte = internalOffet *512;
+
+			  int j;
+			  int counter = 0;
+			  int spaceCounter = 0;
+			  for (j=0; j < 512; j+=4)
+			    {
+
+			      int i;
+			      for (i=0; i < 4; i++)
+				{
+				  printf("%02x", mapper[i + startByte]);
+				  printf(" ");
+				}
+			      counter+=4;
+			      spaceCounter +=4;
+			      if((counter%32) == 0)
+				{
+				  printf("%s\n", "");
+				  spaceCounter = 0;
+				}
+			      if(spaceCounter == 16)
+				{
+				  printf("%s", "    ");
+				}
+			      startByte += 4;
+
 			    }
-			  //fprintf( stdout, strlen(loadedPages->pages[0]) );
-			  printf("%s", "here");
-			  //printf("%d", pageOffset);
-			  //printf("%c", firstByte[1]);
-			  //dump(stdout, atoi(buffer + 5));
+			 //dump(stdout, atoi(buffer + 5));
 			}
 			else
 			{
-				/*char *filename = buffer + 5;
-				*/
+			  //char *filename = buffer + 5;
+
 				char *space = strstr(buffer+5, " ");
 				*space = '\0';
 				//open and validate filename
@@ -236,7 +251,34 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "usage", 5))
 		{
-			//usage();
+			int i;
+			int totalSetBits = 0;
+			// printf("%c", bitMap[0].freePages[0]);
+			// exit(0);
+			for(i = 0; i < 512; i+=4)
+			{
+				char *charArr = malloc(4);
+				char *charArr2 = malloc(4);
+				int j;
+				for(j=i; j<(i+4); j++)
+				{
+					charArr[j] = bitMap[0].freePages[j];
+					charArr2[j] = bitMap[1].freePages[j];
+				}
+
+				int temp = getIntFromCharArr(charArr);
+				int temp2 = getIntFromCharArr(charArr2);
+				int num = countSetBits(temp);
+				int num2 = countSetBits(temp2);
+				totalSetBits = totalSetBits + num + num2;
+			}
+			int systemUsage = 512 * totalSetBits;
+			printf("%s%d%s", "Space used by filesystem: ", systemUsage, " bytes");
+
+			int fileUsage = 0;
+			printf("%s%d%s", "Space used by actual files: ", fileUsage, " bytes");
+
+
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{

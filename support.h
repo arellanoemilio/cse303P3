@@ -94,5 +94,6 @@ int mapDirectoryToMap(char *map, struct directory_page *rootDirectory, struct lo
 int loadDirectoryFromMap(struct directory_page *directory, char *map, struct loaded_pages *loadedPages);
 
 void directoryCopy(struct directory_page *dest, const struct directory_page *source);
+int countSetBits(int n);
 
 #endif

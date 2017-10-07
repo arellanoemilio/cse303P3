@@ -479,3 +479,14 @@ void directoryCopy(struct directory_page *dest, const struct directory_page *sou
 			dest->filesLocations[i].location = source->filesLocations[i].location;
 		}
 }
+
+int countSetBits(int n)
+{
+  unsigned int count = 0;
+  while (n)
+  {
+    count += n & 1;
+    n >>= 1;
+  }
+  return count;
+}
