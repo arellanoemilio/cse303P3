@@ -74,14 +74,15 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 	return newPage;
 }
 
+//returns last directory of cd
 struct directory_page traverseToDirectory(struct directory_page currentDirectory,
 	 																				char *directoryName,
 																					struct loaded_pages *loadedPages){
 	struct directory_page directory;
 	directory.empty = 0;
-	char *token = strtok(directoryName)
+	char *token = strtok(directoryName, "/");
 	while(token != NULL){
-		int pageNumber = pageContainsDirectory(current, token);
+	  int pageNumber = pageContainsDirectory(currentDirectory, token);
 		if(pageNumber > 0){
 			char *map = loadPage(loadedPages, pageNumber/8);
 			if(map == MAP_FAILED){
@@ -98,6 +99,7 @@ struct directory_page traverseToDirectory(struct directory_page currentDirectory
 		else{
 			return NULL;
 		}
+		token = strtok(NULL, "/");
 	}
 	return directory;
 }

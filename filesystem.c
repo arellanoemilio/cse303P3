@@ -151,6 +151,24 @@ int readFileSystemFromFile(char *file,
 	return 1;
 }
 
+void pwd(){
+  printf("here\n");
+}
+
+//child then parent
+
+void mkdir(char* buffer){
+struct directory_page *newPage =  (struct directory_page *) malloc(sizeof(struct directory_page));
+  newPage -> empty = 1;
+  newPage->pageType = 1;
+  newPage->numElements = 2;
+  newPage->nextDirectoryPage = 0;
+  newPage->files = (char*)malloc(496 * sizeof(char));
+  //direcctory name, \0, 4 bytes of integer
+  
+  
+}
+
 /*
  * filesystem() - loads in the filesystem and accepts commands
  */
@@ -231,11 +249,12 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
-			//pwd();
+		  pwd();
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
-			//cd(buffer+3);
+		  
+		  //cd(buffer+3);
 		}
 		else if(!strncmp(buffer, "ls", 2))
 		{
@@ -243,7 +262,12 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "mkdir ", 6))
 		{
-			//mkdir(buffer+6);
+		  //int openPage = findNewPage(freeMemoryPage, &rootSector->lastAllocatedPage);
+		  //printf("%d\n", openPage);
+		  //direcctory name, \0, 4 bytes of integer
+
+		  //append new page to directory and add to 
+		  //mkdir(buffer+6);
 		}
 		else if(!strncmp(buffer, "cat ", 4))
 		{
