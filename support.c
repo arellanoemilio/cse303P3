@@ -341,6 +341,34 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 	return 1;
 }
 
+int makeDirectory(struct directory_page *directory, char *newDirectory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	struct directory_page *newDirectoryPage = (struct directory_page *)malloc(sizeof(struct directory_page));
+	newDirectoryPage->empty = 1;
+	newDirectoryPage->pageType = 1;
+	newDirectoryPage->numElements = 2;
+	newDirectoryPage->nextDirectoryPage = -1;
+	newDirectoryPage->filesLocations = (struct file_location *)malloc(2 * sizeof (struct file_location));
+	newDirectoryPage->filesLocations[1].name = (char *)malloc(3 * sizeof(char));
+	newDirectoryPage->filesLocations[1].name = "..";
+	newDirectoryPage->filesLocations[1].location = directory->filesLocations[0].location;
+	newDirectoryPage->filesLocations[0].name = (char *)malloc(2 * sizeof(char));
+	newDirectoryPage->filesLocations[1].name = ".";
+	int newPageNumber = findNewPage(bitMap, lastAllocatedPage);
+	newDirectoryPage->filesLocations[1].location = newPageNumber;
+	char *map = loadPage(loadedPages, newPageNumber / 8);
+	mapDirectoryToMap(&map[512 * (newPageNumber % 8)], newDirectoryPage, loadedPages, bitMap, lastAllocatedPage);
+	updatePage(loadedPages, newPageNumber / 8);
+	updatePage(loadedPages, 0);
+	directory->numElements++;
+	directory->filesLocations = realloc(directory->filesLocations, directory->numElements * sizeof(struct file_location));
+	directory->filesLocations[directory->numElements - 1].name = (char *)malloc((strlen(newDirectory) + 1) * sizeof(char));
+	strcpy(directory->filesLocations[directory->numElements - 1].name, newDirectory);
+	map = loadPage(loadedPages, directory->filesLocations[0].location / 8);
+	mapDirectoryToMap(&map[512 * (directory->filesLocations[0].location % 8)], directory, loadedPages, bitMap, lastAllocatedPage);
+	updatePage(loadedPages, directory->filesLocations[0].location / 8);
+	return 1;
+}
+
 char * fileLocationsToCharArr(struct file_location *filesLocations, int numElements, int *numPages){
 	int allocations = 1;
 	char * map = (char *)malloc(496 * sizeof(char));

@@ -81,6 +81,8 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 
 int removeRecursively(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
 
+int makeDirectory(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
 /*
  * converts a list of file_locations into a character array for purpose of
  * mapping

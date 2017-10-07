@@ -248,6 +248,7 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "mkdir ", 6))
 		{
+			makeDirectory(currentDirectory, buffer+6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
 			//mkdir(buffer+6);
 		}
 		else if(!strncmp(buffer, "cat ", 4))
