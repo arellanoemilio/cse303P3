@@ -51,7 +51,11 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 			if(available){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
-				bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] | (0x01 << bitPosition);
+				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
+				unsigned char a =  (unsigned) bitMap[0].freePages[byteLocation] + 1;
+				bitMap[0].freePages[byteLocation] = a;
+				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
+
 			}
 			else{
 				bitPosition++;
@@ -219,6 +223,7 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset){
 		}
 	}
 	if(index != -1){
+		printf("updating %d\n", pageOffset);
 		char *map = loadedPages->pages[index];
 		index = msync(map, 4096, MS_SYNC);
 	}

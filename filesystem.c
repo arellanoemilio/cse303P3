@@ -123,10 +123,8 @@ int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct fr
 		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[8]);
 		rootSector->lastAllocatedPage = getIntFromCharArr(&map[12]);
 
-		bitMap[0].freePages = (char *)malloc(512 *sizeof(char));
-		bitMap[1].freePages = (char *)malloc(512 *sizeof(char));
-		memcpy(bitMap[0].freePages, &map[512], 512);
-		memcpy(bitMap[1].freePages, &map[512 * 2], 512);
+		bitMap[0].freePages = &map[512];
+		bitMap[1].freePages = &map[512 * 2];
 
 		loadDirectoryFromMap(rootDirectory, &map[512 * 3], loadedPages);
 	}
