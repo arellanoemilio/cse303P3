@@ -353,7 +353,7 @@ int makeDirectory(struct directory_page *directory, char *newDirectory, struct l
 	newDirectoryPage->filesLocations[1].name = "..";
 	newDirectoryPage->filesLocations[1].location = directory->filesLocations[0].location;
 	newDirectoryPage->filesLocations[0].name = (char *)malloc(2 * sizeof(char));
-	newDirectoryPage->filesLocations[1].name = ".";
+	newDirectoryPage->filesLocations[0].name = ".";
 	int newPageNumber = findNewPage(bitMap, lastAllocatedPage);
 	newDirectoryPage->filesLocations[0].location = newPageNumber;
 	char *map = loadPage(loadedPages, newPageNumber / 8);
