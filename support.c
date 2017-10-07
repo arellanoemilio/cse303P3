@@ -109,6 +109,7 @@ int traverseToDirectory(struct directory_page *currentDirectory, char *directory
 		}
 		token = strtok(NULL,"/");
 	}
+	pageNumber = currentDirectory->filesLocations[0].location;
 	return pageNumber;
 }
 
