@@ -52,7 +52,7 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 
 	struct free_memory_page *freeMemoryPage = (struct free_memory_page *) malloc(2 * sizeof(struct free_memory_page));
 	freeMemoryPage[0].freePages = (char *) malloc(512 * sizeof(char));
-	freeMemoryPage[0].freePages[1] = 0xf0;
+	freeMemoryPage[0].freePages[0] = 0xf0;
 	freeMemoryPage[1].freePages = (char *) malloc(512 * sizeof(char));
 	printf("created freePages\n");
 
@@ -60,7 +60,7 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 	rootDirectory->empty = 1;
 	rootDirectory->pageType = 1;
 	rootDirectory->numElements = 1;
-	rootDirectory->nextDirectoryPage = 0xffffffff;
+	rootDirectory->nextDirectoryPage = -1;
 	rootDirectory->filesLocations = (struct file_location *) malloc(sizeof(struct file_location));
 	rootDirectory->filesLocations[0].name = ".";
 	rootDirectory->filesLocations[0].location = 3;

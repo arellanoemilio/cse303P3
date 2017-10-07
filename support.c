@@ -363,6 +363,7 @@ int makeDirectory(struct directory_page *directory, char *newDirectory, struct l
 	directory->filesLocations = realloc(directory->filesLocations, directory->numElements * sizeof(struct file_location));
 	directory->filesLocations[directory->numElements - 1].name = (char *)malloc((strlen(newDirectory) + 1) * sizeof(char));
 	strcpy(directory->filesLocations[directory->numElements - 1].name, newDirectory);
+	directory->filesLocations[directory->numElements - 1].location = newPageNumber;
 	map = loadPage(loadedPages, directory->filesLocations[0].location / 8);
 	mapDirectoryToMap(&map[512 * (directory->filesLocations[0].location % 8)], directory, loadedPages, bitMap, lastAllocatedPage);
 	updatePage(loadedPages, directory->filesLocations[0].location / 8);
