@@ -109,6 +109,7 @@ int traverseToDirectory(struct directory_page *currentDirectory, char *directory
 		}
 		token = strtok(NULL,"/");
 	}
+	pageNumber = currentDirectory->filesLocations[0].location;
 	return pageNumber;
 }
 
@@ -354,7 +355,7 @@ int makeDirectory(struct directory_page *directory, char *newDirectory, struct l
 	newDirectoryPage->filesLocations[0].name = (char *)malloc(2 * sizeof(char));
 	newDirectoryPage->filesLocations[1].name = ".";
 	int newPageNumber = findNewPage(bitMap, lastAllocatedPage);
-	newDirectoryPage->filesLocations[1].location = newPageNumber;
+	newDirectoryPage->filesLocations[0].location = newPageNumber;
 	char *map = loadPage(loadedPages, newPageNumber / 8);
 	mapDirectoryToMap(&map[512 * (newPageNumber % 8)], newDirectoryPage, loadedPages, bitMap, lastAllocatedPage);
 	updatePage(loadedPages, newPageNumber / 8);
@@ -363,6 +364,7 @@ int makeDirectory(struct directory_page *directory, char *newDirectory, struct l
 	directory->filesLocations = realloc(directory->filesLocations, directory->numElements * sizeof(struct file_location));
 	directory->filesLocations[directory->numElements - 1].name = (char *)malloc((strlen(newDirectory) + 1) * sizeof(char));
 	strcpy(directory->filesLocations[directory->numElements - 1].name, newDirectory);
+	directory->filesLocations[directory->numElements - 1].location = newPageNumber;
 	map = loadPage(loadedPages, directory->filesLocations[0].location / 8);
 	mapDirectoryToMap(&map[512 * (directory->filesLocations[0].location % 8)], directory, loadedPages, bitMap, lastAllocatedPage);
 	updatePage(loadedPages, directory->filesLocations[0].location / 8);
