@@ -249,7 +249,9 @@ void filesystem(char *file)
 		else if(!strncmp(buffer, "mkdir ", 6))
 		{
 			makeDirectory(currentDirectory, buffer+6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
-			//mkdir(buffer+6);
+			if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+				directoryCopy(rootDirectory,currentDirectory);
+			}
 		}
 		else if(!strncmp(buffer, "cat ", 4))
 		{
@@ -300,6 +302,9 @@ void filesystem(char *file)
 		{
 			if(*(buffer+6) != '/'){
 				removeDirectory(currentDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(rootDirectory,currentDirectory);
+				}
 			}
 			else{
 				removeDirectory(rootDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
@@ -311,6 +316,9 @@ void filesystem(char *file)
 		{
 			if(*(buffer+6) != '/'){
 				removeRecursively(currentDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(rootDirectory,currentDirectory);
+				}
 			}
 			else{
 				removeRecursively(rootDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
@@ -320,6 +328,9 @@ void filesystem(char *file)
 		{
 			if(*(buffer+6) != '/'){
 				removeFile(currentDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(rootDirectory,currentDirectory);
+				}
 			}
 			else{
 				removeFile(rootDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
