@@ -40,7 +40,8 @@ struct directory_page{
     int numElements;
     int nextDirectoryPage;
     //IMPORTANT: We should always allocate 496 bytes for directories
-    char *files;
+    //order of files will be itself then parrent
+    struct file_location * filesLocations;
 };
 
 struct data_page{

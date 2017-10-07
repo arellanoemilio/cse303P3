@@ -151,9 +151,12 @@ int readFileSystemFromFile(char *file,
 	return 1;
 }
 
+<<<<<<< HEAD
 void pwd(){
   printf("here\n")l
 }
+=======
+>>>>>>> c72da50d67e0123db75085e387a437e17a631722
 /*
  * filesystem() - loads in the filesystem and accepts commands
  */
@@ -216,7 +219,30 @@ void filesystem(char *file)
 		{
 			if(isdigit(buffer[5]))
 			{
+<<<<<<< HEAD
 				//dump(stdout, atoi(buffer + 5));
+=======
+			  char * charArr = malloc(512);
+			  int pageNum = atoi(buffer + 5);
+			  int pageOffset = pageNum / 8;
+			  loadPage(loadedPages, pageOffset);
+			  int i;
+			  for(i = 0; i < (512/4); i++)
+			    {
+			      // int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
+			      // printf("%d\n", num);
+			      
+			      int num = getIntFromCharArr(&loadedPages->pages[0][i*4]);
+			    
+                              
+			      printf("%d\n", num); 
+			    }
+			  //fprintf( stdout, strlen(loadedPages->pages[0]) );
+			  printf("%s", "here");
+			  //printf("%d", pageOffset);
+			  //printf("%c", firstByte[1]);
+			  //dump(stdout, atoi(buffer + 5));
+>>>>>>> c72da50d67e0123db75085e387a437e17a631722
 			}
 			else
 			{
@@ -234,7 +260,11 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
+<<<<<<< HEAD
 		  pwd();
+=======
+			//pwd();
+>>>>>>> c72da50d67e0123db75085e387a437e17a631722
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
