@@ -3,6 +3,7 @@
 struct root_sector
 {
   //int allocationPages;
+  //location of root directory
   int directoryPages;
   /*
    * IMPORTANT: we need extctly two, each one can hold a bit for 4096 pages

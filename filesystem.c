@@ -137,6 +137,10 @@ int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct fr
 	return 1;
 }
 
+void pwd(){
+  printf("here\n");
+}
+
 /*
  * filesystem() - loads in the filesystem and accepts commands
  */
@@ -236,11 +240,12 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
-			//pwd();
+		  pwd();
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
-			//cd(buffer+3);
+
+		  //cd(buffer+3);
 		}
 		else if(!strncmp(buffer, "ls", 2))
 		{
