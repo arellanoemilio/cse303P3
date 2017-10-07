@@ -252,33 +252,78 @@ void filesystem(char *file)
 		else if(!strncmp(buffer, "usage", 5))
 		{
 			int i;
-			int totalSetBits = 0;
-			// printf("%c", bitMap[0].freePages[0]);
-			// exit(0);
-			for(i = 0; i < 512; i+=4)
-			{
-				char *charArr = malloc(4);
-				char *charArr2 = malloc(4);
-				int j;
-				for(j=i; j<(i+4); j++)
-				{
-					charArr[j] = bitMap[0].freePages[j];
-					charArr2[j] = bitMap[1].freePages[j];
-				}
+											 int totalSetBits = 0;
+											 // printf("%c", bitMap[0].freePages[0]);
+											 // exit(0);
+											 for(i = 0; i < 512; i+=4)
+											 {
+															 char *charArr = malloc(4);
+															 char *charArr2 = malloc(4);
+															 int j;
+															 for(j=i; j<(i+4); j++)
+															 {
+																			 charArr[j] = bitMap[0].freePages[j];
+																			 charArr2[j] = bitMap[1].freePages[j];
+															 }
 
-				int temp = getIntFromCharArr(charArr);
-				int temp2 = getIntFromCharArr(charArr2);
-				int num = countSetBits(temp);
-				int num2 = countSetBits(temp2);
-				totalSetBits = totalSetBits + num + num2;
-			}
-			int systemUsage = 512 * totalSetBits;
-			printf("%s%d%s", "Space used by filesystem: ", systemUsage, " bytes");
-
-			int fileUsage = 0;
-			printf("%s%d%s", "Space used by actual files: ", fileUsage, " bytes");
+															 int temp = getIntFromCharArr(charArr);
+															 int temp2 = getIntFromCharArr(charArr2);
+															 int num = countSetBits(temp);
+															 int num2 = countSetBits(temp2);
+															 totalSetBits = totalSetBits + num + num2;
+											 }
+											 int systemUsage = 512 * totalSetBits;
+											 printf("%s%d%s\n", "Space used by filesystem: ", systemUsage, " bytes");
 
 
+											 int numFilePages = 0;
+											 int index;
+											 for(index = 2; index < rootDirectory->numElements; i++)
+											 {
+															 int pageNum = rootDirectory->filesLocations[index].location;
+															 int pageOffset = pageNum / 8;
+												 char *mapper = loadPage(loadedPages, pageOffset);
+												 int internalOffet = pageNum % 8;
+												 int startByte = internalOffet *512;
+
+															 char *charArr = malloc(4);
+															 int charIndex;
+															 for(charIndex = 0; charIndex < 4; charIndex++)
+															 {
+																			 charArr[charIndex] = mapper[startByte + i + 4];
+															 }
+
+															 int pageType = getIntFromCharArr(charArr);
+
+															 if(pageType == 2)
+															 {
+																			 numFilePages++;
+																			 char *nextPageCharArr = malloc(4);
+																			 int nextPageIndex;
+																			 for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
+																			 {
+																							 nextPageCharArr[nextPageIndex] = mapper[startByte + i + 12];
+																			 }
+																			 int nextPage = getIntFromCharArr(nextPageCharArr);
+																			 while(nextPage != -1)
+																			 {
+																							 pageNum = nextPage;
+																							 pageOffset = pageNum / 8;
+																				 mapper = loadPage(loadedPages, pageOffset);
+																				 internalOffet = pageNum % 8;
+																				 startByte = internalOffet *512;
+
+																							 numFilePages++;
+																							 for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
+																							 {
+																											 nextPageCharArr[nextPageIndex] = mapper[startByte + i + 12];
+																							 }
+																							 nextPage = getIntFromCharArr(nextPageCharArr);
+																			 }
+															 }
+											 }
+											 int fileUsage = numFilePages * 512;
+											 printf("%s%d%s\n", "Space used by actual files: ", fileUsage, " bytes");
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
@@ -392,7 +437,7 @@ void filesystem(char *file)
 			//undelete(buffer + 9);
 		}
 
-
+		printf("%d\n",currentDirectory->filesLocations[0].location);
 
 		free(buffer);
 		buffer = NULL;
