@@ -347,8 +347,7 @@ char * fileLocationsToCharArr(struct file_location *filesLocations, int numEleme
 	int freeSpace = 496;
 	int index = 0;
 	for(int i = 0; i < numElements; i++){
-		int strIndex, strLength;
-		strIndex = 0;
+		int strLength;
 		strLength = strlen(filesLocations[i].name) + 1;
 		if(freeSpace > strLength + 4){
 			strcpy(&map[index], filesLocations[i].name);
