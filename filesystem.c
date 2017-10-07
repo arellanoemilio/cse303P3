@@ -282,16 +282,15 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
-		  pwd();
+		  printWorkingDirectory(currentDirectory);
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
-
-		  //cd(buffer+3);
+			traverseToDirectory(currentDirectory, buffer+3, loadedPages);
 		}
 		else if(!strncmp(buffer, "ls", 2))
 		{
-			//ls();
+			list(currentDirectory, loadedPages);
 		}
 		else if(!strncmp(buffer, "mkdir ", 6))
 		{

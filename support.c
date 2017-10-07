@@ -492,3 +492,57 @@ int countSetBits(int n)
   }
   return count;
 }
+
+void printWorkingDirectory(struct directory_page *directory){
+	char * name = directory->filesLocations[0].name;
+	printf("%s/\n", name);
+}
+
+
+void list(struct directory_page *directory, struct loaded_pages *loadedPages){
+	int numOfElements = directory->numElements;
+	for (int i = 0; i < numOfElements; i++){
+		printf("%s",directory->filesLocations[i].name);
+		int pOrD = getPageType(loadedPages, directory->filesLocations[i].location);
+		if(pOrD == 1){
+			printf("/");
+		}
+		printf("\n");
+	}
+
+}
+
+int getPageType(struct loaded_pages *loadedPages, int pageNumber){
+	char * map = loadPage(loadedPages, pageNumber/8);
+	int page = getIntFromCharArr(&map[512 * (pageNumber % 8) + 4]);
+	return page;
+}
+
+void writeFile(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages){
+	//check if it is in the directory
+	//check if it is a page
+	int numOfElements = directory->numElements;
+	int isInDirectory = 1;
+	int location = -1;
+	for (int i = 0; i < numOfElements; i++){
+		if(!strcmp(directory->filesLocations[i].name, filename)){
+			isInDirectory = 0;
+			location = directory->filesLocations[i].location;
+		}
+	}
+	char * map = loadPage(loadedPages, location/8);
+	char * loadedMap = &map[512 * (location % 8)];
+	//is in the directory
+	if(!isInDirectory){
+		if(amt > 496){
+			//allocate new page
+		}
+		else{
+			strncpy(loadedMap, data, amt);
+			updatePage(loadedPages, location/8);
+		}
+	}
+	else{
+		//not in directory;
+	}
+}

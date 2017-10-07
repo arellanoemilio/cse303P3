@@ -96,4 +96,11 @@ int loadDirectoryFromMap(struct directory_page *directory, char *map, struct loa
 void directoryCopy(struct directory_page *dest, const struct directory_page *source);
 int countSetBits(int n);
 
+void printWorkingDirectory(struct directory_page *directory);
+
+void list(struct directory_page *directory, struct loaded_pages *loadedPages);
+
+int getPageType(struct loaded_pages *loadedPages, int pageNumber);
+
+void writeFile(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages);
 #endif
