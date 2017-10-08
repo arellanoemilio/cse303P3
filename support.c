@@ -240,7 +240,7 @@ int removeDirectory(struct directory_page *directory, char *directoryName, struc
 		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
 			int parentLocation = currentDirectory->filesLocations[1].location;
 			char *map = loadPage(loadedPages, parentLocation/8);
-			loadDirectoryFromMap(parentDirectory,&map[parentLocation % 8], loadedPages);
+			loadDirectoryFromMap(parentDirectory,&map[512 *(parentLocation % 8)], loadedPages);
 			for(int i = 0; i < parentDirectory->numElements; i++){
 				if(parentDirectory->filesLocations[i].location == currentDirectoryPage){
 					for(int j = i; j < parentDirectory->numElements - 1; j++){
@@ -249,7 +249,7 @@ int removeDirectory(struct directory_page *directory, char *directoryName, struc
 					free(parentDirectory->filesLocations[parentDirectory->numElements - 1].name);
 					free(&parentDirectory->filesLocations[parentDirectory->numElements - 1]);
 					parentDirectory->numElements--;
-					mapDirectoryToMap(&map[parentLocation % 8], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					mapDirectoryToMap(&map[512 * (parentLocation % 8)], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					freeMemoryPage(bitMap, &currentDirectoryPage);
 					updatePage(loadedPages, parentLocation / 8);
 					updatePage(loadedPages, 0);
@@ -257,7 +257,7 @@ int removeDirectory(struct directory_page *directory, char *directoryName, struc
 					currentDirectory->empty = 0;
 					currentDirectory->pageType = 0;
 					map = loadPage(loadedPages, currentDirectoryPage / 8);
-					mapDirectoryToMap(&map[currentDirectoryPage % 8], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					mapDirectoryToMap(&map[512 * (currentDirectoryPage % 8)], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					updatePage(loadedPages, currentDirectoryPage / 8);
 				}
 			}
@@ -284,7 +284,7 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 				free(currentDirectory->filesLocations[currentDirectory->numElements - 1].name);
 				free(&currentDirectory->filesLocations[currentDirectory->numElements - 1]);
 				currentDirectory->numElements--;
-				mapDirectoryToMap(&map[currentDirectoryPage % 8], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
+				mapDirectoryToMap(&map[512 * (currentDirectoryPage % 8)], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
 				freeMemoryPage(bitMap, &filePage);
 				updatePage(loadedPages, currentDirectoryPage / 8);
 				updatePage(loadedPages, 0);
@@ -318,7 +318,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 
 			int parentLocation = currentDirectory->filesLocations[1].location;
 			char *map = loadPage(loadedPages, parentLocation/8);
-			loadDirectoryFromMap(parentDirectory,&map[parentLocation % 8], loadedPages);
+			loadDirectoryFromMap(parentDirectory,&map[512 * (parentLocation % 8)], loadedPages);
 			for(int i = 0; i < parentDirectory->numElements; i++){
 				if(parentDirectory->filesLocations[i].location == currentDirectoryPage){
 					for(int j = i; j < parentDirectory->numElements - 1; j++){
@@ -327,7 +327,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 					free(parentDirectory->filesLocations[parentDirectory->numElements - 1].name);
 					free(&parentDirectory->filesLocations[parentDirectory->numElements - 1]);
 					parentDirectory->numElements--;
-					mapDirectoryToMap(&map[parentLocation % 8], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					mapDirectoryToMap(&map[512 * (parentLocation % 8)], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					freeMemoryPage(bitMap, &currentDirectoryPage);
 					updatePage(loadedPages, parentLocation / 8);
 					updatePage(loadedPages, 0);
@@ -335,7 +335,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 					currentDirectory->empty = 0;
 					currentDirectory->pageType = 0;
 					map = loadPage(loadedPages, currentDirectoryPage / 8);
-					mapDirectoryToMap(&map[currentDirectoryPage % 8], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					mapDirectoryToMap(&map[512 * (currentDirectoryPage % 8)], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					updatePage(loadedPages, currentDirectoryPage / 8);
 				}
 			}
