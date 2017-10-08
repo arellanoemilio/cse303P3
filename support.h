@@ -103,11 +103,14 @@ void directoryCopy(struct directory_page *dest, const struct directory_page *sou
 
 int countSetBits(int n);
 
-void printWorkingDirectory(struct directory_page *directory);
+void printWorkingDirectory(struct directory_page *directory, struct loaded_pages *loadedPages);
 
 void list(struct directory_page *directory, struct loaded_pages *loadedPages);
 
 int getPageType(struct loaded_pages *loadedPages, int pageNumber);
 
 int writeFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
+void cat(char * str, struct directory_page *directory, struct loaded_pages *loadedPages);
+
 #endif

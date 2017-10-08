@@ -614,7 +614,7 @@ void printWorkingDirectory(struct directory_page *directory, struct loaded_pages
 	//printf("numElements %d\n", numElements);
 		for(int i = 0; i < numElements; i++){
 			if(temp->filesLocations[i].location == currLocation){
-				printf("%s/\n", temp->filesLocations[i].name);
+				printf("%s/", temp->filesLocations[i].name);
 			}
 		}
 	}
@@ -650,7 +650,7 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 	traverseToFileDirectory(directory, filename, loadedPages, &filePage);
 	if(filePage > 0){
 		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
-		char *map = loadPage(loadedPages, filePage);
+		char *map = loadPage(loadedPages, filePage/8);
 		loadDataPageFromMap(dataPage, &map[512 * (filePage%8)], loadedPages);
 		dataPage->size = amt;
 		dataPage->data = newData;
@@ -682,31 +682,54 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 	return 1;
 }
 
-void writeFile1(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages){
-	//check if it is in the directory
-	//check if it is a page
-	int numOfElements = directory->numElements;
-	int isInDirectory = 1;
-	int location = -1;
-	for (int i = 0; i < numOfElements; i++){
-		if(!strcmp(directory->filesLocations[i].name, filename)){
-			isInDirectory = 0;
-			location = directory->filesLocations[i].location;
+void cat(char * str, struct directory_page *directory, struct loaded_pages *loadedPages){
+	int numElements = directory->numElements;
+	//int isFile = 1;
+	int isValid = 1;
+	int fileNum = -1;
+	for(int i = 0; i < numElements; i++){
+		if(strcmp(directory->filesLocations[i].name, str) == 0){
+			isValid = 0;
+			fileNum = i;
 		}
 	}
-	char * map = loadPage(loadedPages, location/8);
-	char * loadedMap = &map[512 * (location % 8)];
-	//is in the directory
-	if(!isInDirectory){
-		if(amt > 496){
-			//allocate new page
-		}
-		else{
-			strncpy(loadedMap, data, amt);
-			updatePage(loadedPages, location/8);
-		}
+	if(isValid == 1){
+		printf("filename is not valid\n");
+	}
+	int pageBlock = directory->filesLocations[fileNum - 1].location;
+	char * map = loadPage(loadedPages, pageBlock / 8);
+	char * page = &map[512 * (pageBlock % 8)];
+	int pageType = getIntFromCharArr(&page[4]);
+
+	struct data_page * temp = (struct data_page *) malloc(sizeof(struct data_page));
+
+	loadDataPageFromMap(temp, page, loadedPages);
+
+	if(pageType == 2){
+		printf("%s\n",temp->data);
+
 	}
 	else{
-		//not in directory;
+		printf("filename is a directory. Please pass a file\n");
 	}
+}
+
+int appendWriteFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	int filePage = -1;
+	traverseToFileDirectory(directory, filename, loadedPages, &filePage);
+	if(filePage > 0){
+		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
+		char *map = loadPage(loadedPages, filePage/8);
+		loadDataPageFromMap(dataPage, &map[512 * (filePage%8)], loadedPages);
+		dataPage->size += amt;
+		dataPage->data = realloc(dataPage->data, dataPage->size * sizeof(char));
+		memcpy(&dataPage->data[dataPage->size - amt], newData, amt);
+		map = loadPage(loadedPages, filePage/8);
+		mapDataPageToMap(&map[512 * (filePage % 8)], dataPage, loadedPages, bitMap, lastAllocatedPage);
+		updateFile(filePage, loadedPages);
+	}
+	else{
+		return -1;
+	}
+	return 1;
 }

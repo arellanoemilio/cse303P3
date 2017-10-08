@@ -238,12 +238,35 @@ void filesystem(char *file)
 			}
 			else
 			{
-			  //char *filename = buffer + 5;
+				char *filename = buffer + 5;
 
 				char *space = strstr(buffer+5, " ");
 				*space = '\0';
-				//open and validate filename
-				//dumpBinary(file, atoi(space + 1));
+
+				int pageNum = atoi(space + 1);
+				int pageOffset = pageNum / 8;
+
+				char *mapper = loadPage(loadedPages, pageOffset);
+				int internalOffet = pageNum % 8;
+				int startByte = internalOffet *512;
+
+
+				// writeFile(filename, 512, &mapper[startByte], currentDirectory,
+				//      loadedPages, bitMap, &rootSector->lastAllocatedPage);
+
+				if(*(filename) != '/'){
+        	writeFile(filename, 512, &mapper[startByte], currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+        	char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+        	loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
+        	if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+        		directoryCopy(rootDirectory,currentDirectory);
+        	}
+				}
+				else{
+        	writeFile(filename, 512, &mapper[startByte], rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+        	char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+        	loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
+				}
 			}
 		}
 		else if(!strncmp(buffer, "usage", 5))
@@ -257,10 +280,12 @@ void filesystem(char *file)
 															 char *charArr = malloc(4);
 															 char *charArr2 = malloc(4);
 															 int j;
+															 int indexer = 0;
 															 for(j=i; j<(i+4); j++)
 															 {
-																			 charArr[j] = bitMap[0].freePages[j];
-																			 charArr2[j] = bitMap[1].freePages[j];
+																			 charArr[indexer] = bitMap[0].freePages[j];
+																			 charArr2[indexer] = bitMap[1].freePages[j];
+																			 indexer++;
 															 }
 
 															 int temp = getIntFromCharArr(charArr);
@@ -324,7 +349,8 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
-		  printWorkingDirectory(currentDirectory);
+		  printWorkingDirectory(currentDirectory, loadedPages);
+			printf("\n");
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
@@ -343,7 +369,8 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "cat ", 4))
 		{
-			//cat(buffer + 4);
+			cat(buffer + 4, currentDirectory, loadedPages);
+
 		}
 		else if(!strncmp(buffer, "write ", 6))
 		{
