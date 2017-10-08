@@ -52,8 +52,7 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
 				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
-				unsigned char a =  (unsigned) bitMap[0].freePages[byteLocation] + 1;
-				bitMap[0].freePages[byteLocation] = a;
+				bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] | (0x01 << (bitPosition-1));
 				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
 
 			}
@@ -229,6 +228,15 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset){
 	}
 
 	return index;
+}
+
+void updateRootSector(struct root_sector *rootSector, struct loaded_pages *loadedPages){
+	char *map = loadPage(loadedPages, 0);
+	writeIntToCharArr(&map[0],rootSector->freeMemoryPages[0]);
+	writeIntToCharArr(&map[4],rootSector->freeMemoryPages[1]);
+	writeIntToCharArr(&map[8],rootSector->directoryPages);
+	writeIntToCharArr(&map[12],rootSector->lastAllocatedPage);
+	updatePage(loadedPages, 0);
 }
 
 int removeDirectory(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
@@ -502,7 +510,6 @@ void printWorkingDirectory(struct directory_page *directory){
 	char * name = directory->filesLocations[0].name;
 	printf("%s/\n", name);
 }
-
 
 void list(struct directory_page *directory, struct loaded_pages *loadedPages){
 	int numOfElements = directory->numElements;

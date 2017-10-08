@@ -71,6 +71,8 @@ int pageContainsDirectory(struct directory_page *current, char *folderName);
  */
 int updatePage(struct loaded_pages *loadedPages, int pageOffset);
 
+void updateRootSector(struct root_sector *rootSector, struct loaded_pages *loadedPages);
+
 /*
  * Given a currentDirectory, this method removes the directory specified if it
  * is empty

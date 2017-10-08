@@ -1,4 +1,3 @@
-
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -435,6 +434,8 @@ void filesystem(char *file)
 			//undelete(buffer + 9);
 		}
 
+		updateRootSector(rootSector, loadedPages);
+		
 		printf("%d\n",currentDirectory->filesLocations[0].location);
 
 		free(buffer);
