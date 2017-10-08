@@ -113,4 +113,6 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 
 void cat(char * str, struct directory_page *directory, struct loaded_pages *loadedPages);
 
+int appendWriteFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
 #endif

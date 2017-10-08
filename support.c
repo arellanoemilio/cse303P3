@@ -91,7 +91,7 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 
 int freeMemoryPage(struct free_memory_page *bitMap, int *pageNumber){
 	int byteLocation = *pageNumber / 8;
-	int bitPosition = *pageNumber % 8 + 1;
+	int bitPosition = *pageNumber % 8;
 	if (*pageNumber < 4096){
 		bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] ^ (0x80 >> bitPosition);
 	}
@@ -291,7 +291,8 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 	struct directory_page *currentDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 	directoryCopy(currentDirectory, directory);
 	int filePage = -1;
-	int currentDirectoryPage = traverseToFileDirectory(currentDirectory, directoryName, loadedPages, &filePage);
+	traverseToFileDirectory(currentDirectory, directoryName, loadedPages, &filePage);
+	int currentDirectoryPage = currentDirectory->filesLocations[0].location;
 	if(currentDirectoryPage != -1 && filePage != -1){
 		char *map = loadPage(loadedPages, currentDirectoryPage / 8);
 		for(int i = 0; i < currentDirectory->numElements; i++){
@@ -621,10 +622,16 @@ void printWorkingDirectory(struct directory_page *directory, struct loaded_pages
 }
 
 void list(struct directory_page *directory, struct loaded_pages *loadedPages){
-	int numOfElements = directory->numElements;
+	struct directory_page *temp = (struct directory_page *)malloc(sizeof(struct directory_page));
+	int pageBlock = directory->filesLocations[0].location;
+	char * map = loadPage(loadedPages, pageBlock / 8);
+	char * page = &map[512 * (pageBlock % 8)];
+
+	loadDirectoryFromMap(temp, page, loadedPages);
+	int numOfElements = temp->numElements;
 	for (int i = 0; i < numOfElements; i++){
-		printf("%s",directory->filesLocations[i].name);
-		int pOrD = getPageType(loadedPages, directory->filesLocations[i].location);
+		printf("%s",temp->filesLocations[i].name);
+		int pOrD = getPageType(loadedPages, temp->filesLocations[i].location);
 		if(pOrD == 1){
 			printf("/");
 		}
@@ -662,7 +669,7 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
 		dataPage->empty = 1;
 		dataPage->pageType = 2;
-		dataPage->size = amt;
+		dataPage->size = amt >> 1;
 		dataPage->nextDataPage = -1;
 		dataPage->data = newData;
 
@@ -687,6 +694,7 @@ void cat(char * str, struct directory_page *directory, struct loaded_pages *load
 	//int isFile = 1;
 	int isValid = 1;
 	int fileNum = -1;
+	int cont = 1;
 	for(int i = 0; i < numElements; i++){
 		if(strcmp(directory->filesLocations[i].name, str) == 0){
 			isValid = 0;
@@ -695,22 +703,30 @@ void cat(char * str, struct directory_page *directory, struct loaded_pages *load
 	}
 	if(isValid == 1){
 		printf("filename is not valid\n");
+		cont = 0;
 	}
-	int pageBlock = directory->filesLocations[fileNum - 1].location;
-	char * map = loadPage(loadedPages, pageBlock / 8);
-	char * page = &map[512 * (pageBlock % 8)];
-	int pageType = getIntFromCharArr(&page[4]);
+	if(cont == 1){
+		int pageBlock = directory->filesLocations[fileNum].location;
+		char * map = loadPage(loadedPages, pageBlock / 8);
+		char * page = &map[512 * (pageBlock % 8)];
+		int pageType = getIntFromCharArr(&page[4]);
 
-	struct data_page * temp = (struct data_page *) malloc(sizeof(struct data_page));
+		struct data_page * temp = (struct data_page *) malloc(sizeof(struct data_page));
 
-	loadDataPageFromMap(temp, page, loadedPages);
+		loadDataPageFromMap(temp, page, loadedPages);
 
-	if(pageType == 2){
-		printf("%s\n",temp->data);
+		char * data = (char *)malloc(temp->size * sizeof(char));
+		strcpy(data, temp->data);
+		data[temp->size] = '\0';
+		if(pageType == 2){
+		//printf("here\n");
+			printf("%s\n",data);
+		//printf("%s\n", temp->data);
 
-	}
-	else{
-		printf("filename is a directory. Please pass a file\n");
+		}
+		else{
+			printf("filename is a directory. Please pass a file\n");
+		}
 	}
 }
 

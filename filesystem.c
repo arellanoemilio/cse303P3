@@ -391,15 +391,16 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "append ", 7))
 		{
-			/*char *filename = buffer + 7;
-			*/
+			char *filename = buffer + 7;
+
 			char *space = strstr(buffer+7, " ");
 			*space = '\0';
 			size_t amt = atoi(space + 1);
 			space = strstr(space+1, " ");
 
 			char *data = generateData(space+1, amt<<1);
-			//append(filename, amt, data);
+			appendWriteFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+
 			free(data);
 		}
 		else if(!strncmp(buffer, "getpages ", 9))
