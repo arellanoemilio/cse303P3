@@ -590,9 +590,34 @@ int countSetBits(int n)
   return count;
 }
 
-void printWorkingDirectory(struct directory_page *directory){
-	char * name = directory->filesLocations[0].name;
-	printf("%s/\n", name);
+void printWorkingDirectory(struct directory_page *directory, struct loaded_pages *loadedPages){
+	struct directory_page * temp = (struct directory_page *) malloc(sizeof(struct directory_page));
+	//parent location
+	int prevLocation = directory->filesLocations[1].location;
+	int currLocation = directory->filesLocations[0].location;
+
+	if(currLocation == 3){
+		printf("/");
+	}
+	else{
+	//get map of parent location
+		char * map = loadPage(loadedPages, prevLocation/8);
+
+	//make struct directory_page of parent location
+		loadDirectoryFromMap(temp, &map[512 * (prevLocation % 8)], loadedPages);
+
+		printWorkingDirectory(temp,loadedPages);
+
+	//iterate through parent until name of current location is found
+		int numElements = temp->numElements;
+
+	//printf("numElements %d\n", numElements);
+		for(int i = 0; i < numElements; i++){
+			if(temp->filesLocations[i].location == currLocation){
+				printf("%s/\n", temp->filesLocations[i].name);
+			}
+		}
+	}
 }
 
 void list(struct directory_page *directory, struct loaded_pages *loadedPages){
@@ -656,7 +681,6 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 	}
 	return 1;
 }
-
 
 void writeFile1(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages){
 	//check if it is in the directory
