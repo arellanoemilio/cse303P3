@@ -117,9 +117,9 @@ int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct fr
 			return -1;
 		}
 		rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
-		rootSector->directoryPages = getIntFromCharArr(&map[0]);
-		rootSector->freeMemoryPages[0] = getIntFromCharArr(&map[4]);
-		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[8]);
+		rootSector->directoryPages = getIntFromCharArr(&map[8]);
+		rootSector->freeMemoryPages[0] = getIntFromCharArr(&map[0]);
+		rootSector->freeMemoryPages[1] = getIntFromCharArr(&map[4]);
 		rootSector->lastAllocatedPage = getIntFromCharArr(&map[12]);
 
 		bitMap[0].freePages = &map[512];
@@ -435,7 +435,7 @@ void filesystem(char *file)
 		}
 
 		updateRootSector(rootSector, loadedPages);
-		
+
 		printf("%d\n",currentDirectory->filesLocations[0].location);
 
 		free(buffer);

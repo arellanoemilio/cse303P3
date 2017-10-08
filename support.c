@@ -47,17 +47,18 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 				bitPosition = 0;
 				byteLocation++;
 			}
-			int available = bitMap[0].freePages[byteLocation] ^ (0x01 << bitPosition);
+			int available = bitMap[0].freePages[byteLocation] ^ (0x80 >> bitPosition);
 			if(available){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
-				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
-				bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] | (0x01 << (bitPosition-1));
-				printf("%02x\n", (unsigned) bitMap[0].freePages[byteLocation]);
-
+				bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] | (0x80 >> (bitPosition));
 			}
 			else{
 				bitPosition++;
+				if(bitPosition == 8){
+					byteLocation++;
+					bitPosition = 0;
+				}
 			}
 		}
 		else{
@@ -65,14 +66,22 @@ int findNewPage(struct free_memory_page *bitMap, int *lastAllocatedPage){
 				bitPosition = 0;
 				byteLocation++;
 			}
-			int available = bitMap[1].freePages[byteLocation - 512] ^ (0x01 << bitPosition);
+			int available = bitMap[1].freePages[byteLocation - 512] ^ (0x80 >> bitPosition);
 			if(available){
 				newPage = (8 * byteLocation) + bitPosition;
 				*lastAllocatedPage = newPage;
-				bitMap[1].freePages[byteLocation] = bitMap[1].freePages[byteLocation] | (0x01 << bitPosition);
+				bitMap[1].freePages[byteLocation - 512] = bitMap[1].freePages[byteLocation - 512] | (0x80 >> (bitPosition));
 			}
 			else{
 				bitPosition++;
+				if(bitPosition == 8){
+					byteLocation++;
+					bitPosition = 0;
+					if(byteLocation == 1024){
+						byteLocation = 0;
+						bitPosition = 4;
+					}
+				}
 			}
 		}
 	}
@@ -83,10 +92,10 @@ int freeMemoryPage(struct free_memory_page *bitMap, int *pageNumber){
 	int byteLocation = *pageNumber / 8;
 	int bitPosition = *pageNumber % 8 + 1;
 	if (*pageNumber < 4096){
-		bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] ^ (0x01 << bitPosition);
+		bitMap[0].freePages[byteLocation] = bitMap[0].freePages[byteLocation] ^ (0x80 >> bitPosition);
 	}
 	else{
-		bitMap[1].freePages[byteLocation] = bitMap[1].freePages[byteLocation - 512] ^ (0x01 << bitPosition);
+		bitMap[1].freePages[byteLocation - 512] = bitMap[1].freePages[byteLocation - 512] ^ (0x80 >> bitPosition);
 	}
 	return 1;
 }
