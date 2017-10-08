@@ -173,12 +173,6 @@ void filesystem(char *file)
 	 * user enters "quit"
 	 * Commands will be well-formatted.
 	 */
-	char *tempChar = generateData("hello", 5);
-	printf("%d\n",strlen(tempChar));
-	for(int i = 0; i < strlen(tempChar); i++){
-		printf("%d\n",tempChar[i]);
-	}
-
 	char *buffer = NULL;
 	size_t size = 0;
 	while(getline(&buffer, &size, stdin) != -1)
