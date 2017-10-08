@@ -173,6 +173,12 @@ void filesystem(char *file)
 	 * user enters "quit"
 	 * Commands will be well-formatted.
 	 */
+	char *tempChar = generateData("hello", 5);
+	printf("%d\n",strlen(tempChar));
+	for(int i = 0; i < strlen(tempChar); i++){
+		printf("%d\n",tempChar[i]);
+	}
+
 	char *buffer = NULL;
 	size_t size = 0;
 	while(getline(&buffer, &size, stdin) != -1)
@@ -347,14 +353,19 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "write ", 6))
 		{
-			/*char *filename = buffer + 6;
-			*/char *space = strstr(buffer+6, " ");
+			char *filename = buffer + 6;
+			char *space = strstr(buffer+6, " ");
 			*space = '\0';
 			size_t amt = atoi(space + 1);
 			space = strstr(space+1, " ");
 
 			char *data = generateData(space+1, amt<<1);
-			//write(filename, amt, data);
+			writeFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+			loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
+			if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+				directoryCopy(rootDirectory,currentDirectory);
+			}
 			free(data);
 		}
 		else if(!strncmp(buffer, "append ", 7))
@@ -390,12 +401,16 @@ void filesystem(char *file)
 		{
 			if(*(buffer+6) != '/'){
 				removeDirectory(currentDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
 				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
 					directoryCopy(rootDirectory,currentDirectory);
 				}
 			}
 			else{
 				removeDirectory(rootDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
 			}
 
 			rmdir(buffer + 6);
@@ -404,24 +419,32 @@ void filesystem(char *file)
 		{
 			if(*(buffer+6) != '/'){
 				removeRecursively(currentDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
 				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
 					directoryCopy(rootDirectory,currentDirectory);
 				}
 			}
 			else{
 				removeRecursively(rootDirectory, buffer + 7, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
 			}
 		}
 		else if(!strncmp(buffer, "rm ", 3))
 		{
 			if(*(buffer+6) != '/'){
 				removeFile(currentDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
 				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
 					directoryCopy(rootDirectory,currentDirectory);
 				}
 			}
 			else{
 				removeFile(rootDirectory, buffer + 3, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
 			}
 			//rm(buffer + 3);
 		}

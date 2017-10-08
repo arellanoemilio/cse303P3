@@ -71,6 +71,8 @@ int pageContainsDirectory(struct directory_page *current, char *folderName);
  */
 int updatePage(struct loaded_pages *loadedPages, int pageOffset);
 
+int updateFile(int pageNum, struct loaded_pages *loadedPages);
+
 void updateRootSector(struct root_sector *rootSector, struct loaded_pages *loadedPages);
 
 /*
@@ -95,7 +97,10 @@ int mapDirectoryToMap(char *map, struct directory_page *rootDirectory, struct lo
 
 int loadDirectoryFromMap(struct directory_page *directory, char *map, struct loaded_pages *loadedPages);
 
+int mapDataPageToMap(char *map, struct data_page *dataPage, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
 void directoryCopy(struct directory_page *dest, const struct directory_page *source);
+
 int countSetBits(int n);
 
 void printWorkingDirectory(struct directory_page *directory);
@@ -104,5 +109,5 @@ void list(struct directory_page *directory, struct loaded_pages *loadedPages);
 
 int getPageType(struct loaded_pages *loadedPages, int pageNumber);
 
-void writeFile(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages);
+int writeFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
 #endif

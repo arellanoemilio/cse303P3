@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/mman.h>
 #include "support.h"
 
@@ -264,11 +265,11 @@ int removeDirectory(struct directory_page *directory, char *directoryName, struc
 						parentDirectory->filesLocations[j] = parentDirectory->filesLocations[j + 1];
 					}
 					free(parentDirectory->filesLocations[parentDirectory->numElements - 1].name);
-					free(&parentDirectory->filesLocations[parentDirectory->numElements - 1]);
+					parentDirectory->filesLocations = realloc(parentDirectory->filesLocations,(parentDirectory->numElements - 1) * sizeof(struct file_location));
 					parentDirectory->numElements--;
 					mapDirectoryToMap(&map[512 * (parentLocation % 8)], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					freeMemoryPage(bitMap, &currentDirectoryPage);
-					updatePage(loadedPages, parentLocation / 8);
+					updateFile(parentLocation, loadedPages);
 					updatePage(loadedPages, 0);
 					i = parentDirectory->numElements;
 					currentDirectory->empty = 0;
@@ -299,11 +300,11 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 					currentDirectory->filesLocations[j] = currentDirectory->filesLocations[j + 1];
 				}
 				free(currentDirectory->filesLocations[currentDirectory->numElements - 1].name);
-				free(&currentDirectory->filesLocations[currentDirectory->numElements - 1]);
+				currentDirectory->filesLocations = realloc(currentDirectory->filesLocations,(currentDirectory->numElements - 1) * sizeof(struct file_location));
 				currentDirectory->numElements--;
 				mapDirectoryToMap(&map[512 * (currentDirectoryPage % 8)], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
 				freeMemoryPage(bitMap, &filePage);
-				updatePage(loadedPages, currentDirectoryPage / 8);
+				updateFile(currentDirectoryPage, loadedPages);
 				updatePage(loadedPages, 0);
 				i = currentDirectory->numElements;
 				currentDirectory->pageType = 0;
@@ -327,7 +328,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 	int currentDirectoryPage = traverseToDirectory(currentDirectory, directoryName, loadedPages);
 	if(currentDirectoryPage != -1){
 		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
-			for(int i = currentDirectory->numElements - 1; i > 1; i++){
+			for(int i = currentDirectory->numElements - 1; i > 1; i--){
 				if(removeDirectory(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
 					return -1;
 				}
@@ -342,11 +343,11 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 						parentDirectory->filesLocations[j] = parentDirectory->filesLocations[j + 1];
 					}
 					free(parentDirectory->filesLocations[parentDirectory->numElements - 1].name);
-					free(&parentDirectory->filesLocations[parentDirectory->numElements - 1]);
+					parentDirectory->filesLocations = realloc(parentDirectory->filesLocations,(parentDirectory->numElements - 1) * sizeof(struct file_location));
 					parentDirectory->numElements--;
 					mapDirectoryToMap(&map[512 * (parentLocation % 8)], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
 					freeMemoryPage(bitMap, &currentDirectoryPage);
-					updatePage(loadedPages, parentLocation / 8);
+					updateFile(parentLocation, loadedPages);
 					updatePage(loadedPages, 0);
 					i = parentDirectory->numElements;
 					currentDirectory->empty = 0;
@@ -389,7 +390,7 @@ int makeDirectory(struct directory_page *directory, char *newDirectory, struct l
 	directory->filesLocations[directory->numElements - 1].location = newPageNumber;
 	map = loadPage(loadedPages, directory->filesLocations[0].location / 8);
 	mapDirectoryToMap(&map[512 * (directory->filesLocations[0].location % 8)], directory, loadedPages, bitMap, lastAllocatedPage);
-	updatePage(loadedPages, directory->filesLocations[0].location / 8);
+	updateFile(directory->filesLocations[0].location, loadedPages);
 	return 1;
 }
 
@@ -430,7 +431,7 @@ int mapDirectoryToMap(char *map, struct directory_page *directory, struct loaded
 				char *map2 = loadPage(loadedPages, nextPage / 8);
 				map = &map2[512 * (nextPage % 8)];
 				nextDirectoryPage = getIntFromCharArr(&map[12]);
-				ghostPages = -1;
+				ghostPages = getIntFromCharArr(&map[12]);
 			}
 			else{
 				int nextPage = findNewPage(bitMap,lastAllocatedPage);
@@ -438,7 +439,7 @@ int mapDirectoryToMap(char *map, struct directory_page *directory, struct loaded
 				writeIntToCharArr(&map[12], nextPage);
 				map = &map2[512 * (nextPage % 8)];
 				nextDirectoryPage = -1;
-				ghostPages = getIntFromCharArr(&map[12]);
+				ghostPages = -1;
 			}
 		}
 		writeIntToCharArr(&map[0], directory->empty);
@@ -487,6 +488,80 @@ int loadDirectoryFromMap(struct directory_page *directory, char *map, struct loa
 		directory->filesLocations[i].location = getIntFromCharArr(&locationData[index]);
 		index += 4;
 	}
+	return 1;
+}
+
+int mapDataPageToMap(char *map, struct data_page *dataPage, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	int numPages = (int) (ceil(dataPage->size/496.0));
+	int nextDataPage = dataPage->nextDataPage;
+	int ghostPages = dataPage->nextDataPage;
+	for(int i = 0; i < numPages; i++){
+		if(i > 0){
+			int nextPage = getIntFromCharArr(&map[12]);
+			if(nextPage != -1){
+				char *map2 = loadPage(loadedPages, nextPage / 8);
+				map = &map2[512 * (nextPage % 8)];
+				nextDataPage = getIntFromCharArr(&map[12]);
+				ghostPages = getIntFromCharArr(&map[12]);
+			}
+			else{
+				int nextPage = findNewPage(bitMap,lastAllocatedPage);
+				char *map2 = loadPage(loadedPages, nextPage / 8);
+				writeIntToCharArr(&map[12], nextPage);
+				map = &map2[512 * (nextPage % 8)];
+				nextDataPage = -1;
+				ghostPages = -1;
+			}
+		}
+		writeIntToCharArr(&map[0], dataPage->empty);
+		writeIntToCharArr(&map[4], dataPage->pageType);
+		writeIntToCharArr(&map[8], dataPage->size);
+		writeIntToCharArr(&map[12], nextDataPage);
+		if((dataPage->size - (i * 496)) > 496){
+			memcpy(&map[16],&dataPage->data[i * 496],496);
+		}
+		else{
+			memcpy(&map[16],&dataPage->data[i * 496],dataPage->size - (i * 496));
+		}
+	}
+	writeIntToCharArr(&map[12], -1);
+
+	while(ghostPages != -1){
+		char *map2 = loadPage(loadedPages, ghostPages / 8);
+		map = &map2[512 * (ghostPages % 8)];
+		writeIntToCharArr(&map[0], 0);
+		writeIntToCharArr(&map[4], 0);
+		freeMemoryPage(bitMap, &ghostPages);
+		ghostPages = getIntFromCharArr(&map[12]);
+	}
+	return 1;
+}
+
+int loadDataPageFromMap(struct data_page *dataPage, char *map, struct loaded_pages *loadedPages){
+	dataPage->empty = getIntFromCharArr(&map[0]);
+	dataPage->pageType = getIntFromCharArr(&map[4]);
+	dataPage->size = getIntFromCharArr(&map[8]);
+	dataPage->nextDataPage = getIntFromCharArr(&map[12]);
+	dataPage->data = (char *)malloc(dataPage->size * sizeof(char));
+	int nextDataPage = dataPage->nextDataPage;
+	int i = 0;
+	while(nextDataPage != -1){
+		memcpy(&dataPage->data[i * 496], &map[16],496);
+		i++;
+		map = loadPage(loadedPages, nextDataPage/8);
+		map = &map[512 *(nextDataPage%8)];
+		nextDataPage = getIntFromCharArr(&map[12]);
+	}
+	memcpy(&dataPage->data[i * 496],&map[16], dataPage->size - (i * 496));
+	return 1;
+}
+
+int updateFile(int pageNum, struct loaded_pages *loadedPages){
+	do{
+		updatePage(loadedPages, pageNum);
+		char *map = loadPage(loadedPages, pageNum/8);
+		pageNum = getIntFromCharArr(&map[(512 * (pageNum % 8))+12]);
+	}while(pageNum != -1);
 	return 1;
 }
 
@@ -539,7 +614,51 @@ int getPageType(struct loaded_pages *loadedPages, int pageNumber){
 	return page;
 }
 
-void writeFile(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages){
+int writeFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	int filePage = -1;
+	char *token = strtok(filename, "/");
+	char *name = "";
+	while(token != NULL){
+		name = token;
+		token = strtok(NULL, "/");
+	}
+	traverseToFileDirectory(directory, filename, loadedPages, &filePage);
+	if(filePage > 0){
+		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
+		char *map = loadPage(loadedPages, filePage);
+		loadDataPageFromMap(dataPage, &map[512 * (filePage%8)], loadedPages);
+		dataPage->size = amt;
+		dataPage->data = newData;
+		map = loadPage(loadedPages, filePage);
+		mapDataPageToMap(&map[512 * (filePage % 8)], dataPage, loadedPages, bitMap, lastAllocatedPage);
+		updateFile(filePage, loadedPages);
+	}
+	else{
+		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
+		dataPage->empty = 1;
+		dataPage->pageType = 2;
+		dataPage->size = amt;
+		dataPage->nextDataPage = -1;
+		dataPage->data = newData;
+
+		filePage = findNewPage(bitMap, lastAllocatedPage);
+		char *map = loadPage(loadedPages, filePage/8);
+		mapDataPageToMap(&map[512 * (filePage%8)], dataPage, loadedPages, bitMap, lastAllocatedPage);
+		updateFile(filePage, loadedPages);
+		directory->numElements++;
+		directory->filesLocations = realloc(directory->filesLocations, directory->numElements * sizeof(struct file_location));
+		directory->filesLocations[directory->numElements - 1].name = (char *)malloc((strlen(name) + 1) * sizeof(char));
+		strcpy(directory->filesLocations[directory->numElements - 1].name, name);
+		directory->filesLocations[directory->numElements - 1].location = filePage;
+		map = loadPage(loadedPages, directory->filesLocations[0].location / 8);
+		mapDirectoryToMap(&map[512 * (directory->filesLocations[0].location % 8)], directory, loadedPages, bitMap, lastAllocatedPage);
+		updateFile(directory->filesLocations[0].location, loadedPages);
+	}
+	return 1;
+}
+
+
+void writeFile1(char* filename, int amt, char* data, struct directory_page *directory, struct loaded_pages *loadedPages){
 	//check if it is in the directory
 	//check if it is a page
 	int numOfElements = directory->numElements;
