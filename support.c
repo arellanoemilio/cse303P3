@@ -629,7 +629,7 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 		loadDataPageFromMap(dataPage, &map[512 * (filePage%8)], loadedPages);
 		dataPage->size = amt;
 		dataPage->data = newData;
-		map = loadPage(loadedPages, filePage);
+		map = loadPage(loadedPages, filePage/8);
 		mapDataPageToMap(&map[512 * (filePage % 8)], dataPage, loadedPages, bitMap, lastAllocatedPage);
 		updateFile(filePage, loadedPages);
 	}
