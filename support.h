@@ -1,6 +1,7 @@
 #ifndef SUPPORT_H__
 #define SUPPORT_H__
 #include "structs.h"
+#include "stddef.h"
 
 /*
  * Store information about the student who completed the assignment, to
@@ -113,6 +114,13 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 
 void cat(char * str, struct directory_page *directory, struct loaded_pages *loadedPages);
 
+void remover(char *str, int start, int end, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
+
 int appendWriteFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage);
 
+void countNumFiles(struct directory_page *directory, int startIndex, struct loaded_pages *loadedPages, int *numFiles);
+
+void get(int pageNum, size_t start, size_t end, struct loaded_pages *loadedPages);
+
+int getPages(char * fileName, struct directory_page *directory, struct loaded_pages *loadedPages);
 #endif

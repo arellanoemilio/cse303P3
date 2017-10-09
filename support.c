@@ -143,7 +143,7 @@ int traverseToFileDirectory(struct directory_page *currentDirectory, char *direc
 			else{
 				if(getIntFromCharArr(&map[512 *(pageNumber % 8) + 4]) == 1){
 					if(loadDirectoryFromMap(currentDirectory, &map[512 * (pageNumber % 8)], loadedPages) == -1){
-						pageNumber = -1;
+						*filePage = -1;
 					}
 				}
 				else if (getIntFromCharArr(&map[512 *(pageNumber % 8) + 4]) == 2){
@@ -156,7 +156,7 @@ int traverseToFileDirectory(struct directory_page *currentDirectory, char *direc
 	}
 
 	if(token != NULL){
-		pageNumber = -1;
+		*filePage = -1;
 	}
 
 	return previousPageNumber;
@@ -232,12 +232,16 @@ int updatePage(struct loaded_pages *loadedPages, int pageOffset){
 		}
 	}
 	if(index != -1){
-		printf("updating %d\n", pageOffset);
 		char *map = loadedPages->pages[index];
 		index = msync(map, 4096, MS_SYNC);
 	}
 
 	return index;
+}
+
+
+void freeLoadedMaps(struct loaded_pages *loadedPages){
+
 }
 
 void updateRootSector(struct root_sector *rootSector, struct loaded_pages *loadedPages){
@@ -280,9 +284,10 @@ int removeDirectory(struct directory_page *directory, char *directoryName, struc
 				}
 			}
 		}
+
 	}
 	else{
-		return -1;
+		printf("Unable to delete directory. The directory is not empty or could not be found.\n");
 	}
 	return 1;
 }
@@ -317,7 +322,7 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 		}
 	}
 	else{
-		return -1;
+		printf("Unable to delete file. File could not be found.");
 	}
 	return 1;
 }
@@ -329,12 +334,14 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 	int currentDirectoryPage = traverseToDirectory(currentDirectory, directoryName, loadedPages);
 	if(currentDirectoryPage != -1){
 		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
-			for(int i = currentDirectory->numElements - 1; i > 1; i--){
-				if(removeDirectory(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
-					return -1;
+			if(currentDirectory->numElements > 2){
+				for(int i = currentDirectory->numElements - 1; i > 1; i--){
+					if(removeRecursively(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
+						printf("Unable to continue recursive deletion.\n");
+						return -1;
+					}
 				}
 			}
-
 			int parentLocation = currentDirectory->filesLocations[1].location;
 			char *map = loadPage(loadedPages, parentLocation/8);
 			loadDirectoryFromMap(parentDirectory,&map[512 * (parentLocation % 8)], loadedPages);
@@ -669,7 +676,7 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
 		dataPage->empty = 1;
 		dataPage->pageType = 2;
-		dataPage->size = amt >> 1;
+		dataPage->size = amt;
 		dataPage->nextDataPage = -1;
 		dataPage->data = newData;
 
@@ -690,39 +697,58 @@ int writeFile(char* filename, int amt, char* newData, struct directory_page *dir
 }
 
 void cat(char * str, struct directory_page *directory, struct loaded_pages *loadedPages){
-	int numElements = directory->numElements;
-	//int isFile = 1;
-	int isValid = 1;
 	int fileNum = -1;
-	int cont = 1;
-	for(int i = 0; i < numElements; i++){
-		if(strcmp(directory->filesLocations[i].name, str) == 0){
-			isValid = 0;
-			fileNum = i;
-		}
-	}
-	if(isValid == 1){
+	struct directory_page *tmp = (struct directory_page*)malloc(sizeof(struct directory_page));
+	directoryCopy(tmp, directory);
+	traverseToFileDirectory(tmp, str, loadedPages, &fileNum);
+	if(fileNum == -1){
 		printf("filename is not valid\n");
-		cont = 0;
 	}
-	if(cont == 1){
-		int pageBlock = directory->filesLocations[fileNum].location;
-		char * map = loadPage(loadedPages, pageBlock / 8);
-		char * page = &map[512 * (pageBlock % 8)];
-		int pageType = getIntFromCharArr(&page[4]);
-
+	else{
+		char * map = loadPage(loadedPages, fileNum / 8);
 		struct data_page * temp = (struct data_page *) malloc(sizeof(struct data_page));
 
-		loadDataPageFromMap(temp, page, loadedPages);
+		loadDataPageFromMap(temp, &map[512 * (fileNum%8)], loadedPages);
 
-		char * data = (char *)malloc(temp->size * sizeof(char));
-		strcpy(data, temp->data);
+		if(temp->pageType == 2){
+			printf("%s\n", temp->data);
+		}
+		else{
+			printf("filename is a directory. Please pass a file\n");
+		}
+	}
+}
+
+void remover(char *str, int start, int end, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	int fileNum = -1;
+
+	traverseToFileDirectory(directory, str, loadedPages, &fileNum);
+	if(fileNum == -1){
+		printf("filename is not valid\n");
+	}
+	else{
+		char * map = loadPage(loadedPages, fileNum / 8);
+		struct data_page * temp = (struct data_page *) malloc(sizeof(struct data_page));
+
+		loadDataPageFromMap(temp, &map[512 * (fileNum%8)], loadedPages);
+
+		char * data = (char *)malloc((temp->size) * sizeof(char));
+		memcpy(data, temp->data, temp->size);
 		data[temp->size] = '\0';
-		if(pageType == 2){
-		//printf("here\n");
-			printf("%s\n",data);
-		//printf("%s\n", temp->data);
 
+		if(temp->pageType == 2){
+			char * first = (char *)malloc(start * sizeof(char));
+			char * second = (char *)malloc((temp->size - end) * sizeof(char));
+
+			memcpy(first, data, start);
+			char * tmp = &data[end];
+			memcpy(second, tmp, strlen(tmp));
+			printf("First %s\n Second %s\n", first, second);
+			first = realloc(first, strlen(first) + strlen(second));
+			strcat(first, second);
+			temp->data = first;
+			temp->size = strlen(first);
+			mapDataPageToMap(&map[512 * (fileNum%8)], temp, loadedPages, bitMap, lastAllocatedPage);
 		}
 		else{
 			printf("filename is a directory. Please pass a file\n");
@@ -732,7 +758,9 @@ void cat(char * str, struct directory_page *directory, struct loaded_pages *load
 
 int appendWriteFile(char* filename, int amt, char* newData, struct directory_page *directory, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
 	int filePage = -1;
-	traverseToFileDirectory(directory, filename, loadedPages, &filePage);
+	struct directory_page *temp = (struct directory_page *)malloc(sizeof(struct directory_page));
+	directoryCopy(temp, directory);
+	traverseToFileDirectory(temp, filename, loadedPages, &filePage);
 	if(filePage > 0){
 		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
 		char *map = loadPage(loadedPages, filePage/8);
@@ -747,5 +775,115 @@ int appendWriteFile(char* filename, int amt, char* newData, struct directory_pag
 	else{
 		return -1;
 	}
+	return 1;
+}
+
+void countNumFiles(struct directory_page *directory, int startIndex, struct loaded_pages *loadedPages, int *numFiles)
+{
+	int i;
+  for(i = startIndex; i < directory->numElements; i++)
+  {
+  	int pageNum = directory->filesLocations[i].location;
+    int pageOffset = pageNum / 8;
+    char *mapper = loadPage(loadedPages, pageOffset);
+    int internalOffet = pageNum % 8;
+    int startByte = internalOffet *512;
+    char *charArr = malloc(4);
+    int charIndex;
+    for(charIndex = 0; charIndex < 4; charIndex++)
+    {
+    	charArr[charIndex] = mapper[startByte + charIndex + 4];
+    }
+    int pageType = getIntFromCharArr(charArr);
+
+    if(pageType == 1)
+    {
+    	struct directory_page *newDir = malloc(sizeof(struct directory_page));
+    	loadDirectoryFromMap(newDir, &mapper[startByte], loadedPages);
+    	countNumFiles(newDir, 2, loadedPages, numFiles);
+    }
+    else if (pageType == 2){
+    	(*numFiles)++;
+      char *nextPageCharArr = malloc(4);
+      int nextPageIndex;
+      for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
+      {
+  			nextPageCharArr[nextPageIndex] = mapper[startByte + nextPageIndex + 12];
+      }
+      int nextPage = getIntFromCharArr(nextPageCharArr);
+      while(nextPage != -1)
+      {
+      	pageNum = nextPage;
+        pageOffset = pageNum / 8;
+        mapper = loadPage(loadedPages, pageOffset);
+        internalOffet = pageNum % 8;
+        startByte = internalOffet *512;
+        (*numFiles)++;
+        for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
+        {
+        	nextPageCharArr[nextPageIndex] = mapper[startByte + nextPageIndex + 12];
+        }
+        nextPage = getIntFromCharArr(nextPageCharArr);
+      }
+    }
+  }
+}
+
+void get(int pageNum, size_t start, size_t end, struct loaded_pages *loadedPages)
+{
+	int pageOffset = pageNum / 8;
+
+  char *mapper = loadPage(loadedPages, pageOffset);
+  int internalOffet = pageNum % 8;
+  int startByte = internalOffet *512;
+	struct data_page *directoryPage = malloc(sizeof(struct directory_page));
+	loadDataPageFromMap(directoryPage, &mapper[startByte], loadedPages);
+  int i;
+  int spaceCounter = 0;
+  for(i = start; i < end-1; i++)
+  {
+		printf("%c", directoryPage->data[i]);
+  	spaceCounter++;
+  	if(spaceCounter == 32)
+  	{
+  		printf("%s", "\n");
+    	spaceCounter = 0;
+  	}
+  	else if(spaceCounter==16)
+  	{
+  		printf("    ");
+  	}
+	}
+	printf("\n");
+}
+
+
+int getPages(char * fileName, struct directory_page *directory, struct loaded_pages *loadedPages){
+	int filePage = -1;
+
+	traverseToFileDirectory(directory, fileName, loadedPages, &filePage);
+	if(filePage != -1){
+		char *map = loadPage(loadedPages, filePage/8);
+		struct data_page *dataPage = (struct data_page *)malloc(sizeof(struct data_page));
+		loadDataPageFromMap(dataPage, &map[512 * (filePage % 8)], loadedPages);
+		int nextDataPage = dataPage->nextDataPage;
+		printf("%d",filePage);
+		while(nextDataPage != -1){
+			map = loadPage(loadedPages, nextDataPage/8);
+			printf(", %d",nextDataPage);
+			nextDataPage = getIntFromCharArr(&map[(512 * (nextDataPage% 8)) + 12]);
+		}
+	}
+	else{
+		char *map;
+		int nextPage = directory->nextDirectoryPage;
+		printf("%d",directory->filesLocations[0].location);
+		while(nextPage != -1){
+			map = loadPage(loadedPages, nextPage/8);
+			printf(", %d",nextPage);
+			nextPage = getIntFromCharArr(&map[(512 * (nextPage % 8)) + 12]);
+		}
+	}
+	printf("\n");
 	return 1;
 }

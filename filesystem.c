@@ -47,13 +47,11 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 	rootSector->freeMemoryPages[0] = 1;
 	rootSector->freeMemoryPages[1] = 2;
 	rootSector->lastAllocatedPage = 3;
-	printf("created rootSector\n");
 
 	struct free_memory_page *freeMemoryPage = (struct free_memory_page *) malloc(2 * sizeof(struct free_memory_page));
 	freeMemoryPage[0].freePages = (char *) malloc(512 * sizeof(char));
 	freeMemoryPage[0].freePages[0] = 0xf0;
 	freeMemoryPage[1].freePages = (char *) malloc(512 * sizeof(char));
-	printf("created freePages\n");
 
 	struct directory_page *rootDirectory = (struct directory_page *) malloc(sizeof(struct directory_page));
 	rootDirectory->empty = 1;
@@ -63,8 +61,6 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 	rootDirectory->filesLocations = (struct file_location *) malloc(sizeof(struct file_location));
 	rootDirectory->filesLocations[0].name = ".";
 	rootDirectory->filesLocations[0].location = 3;
-	printf("created directoryPage\n");
-
 
 	int fileData = open(file, O_RDWR);
 	char *map = (char *) mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fileData, 0);
@@ -89,12 +85,10 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 
 	if(msync(map, 4096, MS_SYNC) == -1){
 		close(fileData);
-		printf("we fucked up");
 		exit(EXIT_FAILURE);
 	}
 	if (munmap(map, 4096) == -1){
 	    close(fileData);
-	    perror("Error un-mmapping the file");
 	    exit(EXIT_FAILURE);
 	}
 
@@ -109,11 +103,10 @@ int initializeFileSystem(char *file, struct loaded_pages *loadedPages){
 int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct free_memory_page *bitMap,
 													 struct directory_page *rootDirectory, struct loaded_pages *loadedPages){
 	if(verify(file) == 1){
-		printf("the file was verified\n");
+		printf("The file was verified\n");
   	loadedPages->fileData = open(file, O_RDWR);
 		char *map = loadPage(loadedPages, 0);
 		if(map == MAP_FAILED){
-			perror("mmap failed");
 			return -1;
 		}
 		rootSector->freeMemoryPages = (int *) malloc(2 * sizeof(int));
@@ -128,14 +121,10 @@ int readFileSystemFromFile(char *file, struct root_sector *rootSector, struct fr
 		loadDirectoryFromMap(rootDirectory, &map[512 * 3], loadedPages);
 	}
 	else{
-		printf("file was not verified");
+		printf("File was not verified please privide an appropirete filesystem.");
 		return -1;
 	}
 	return 1;
-}
-
-void pwd(){
-  printf("here\n");
 }
 
 /*
@@ -195,6 +184,7 @@ void filesystem(char *file)
 
 		if(!strcmp(buffer, "quit"))
 		{
+			//freeLoadedMaps(loadedPages);
 			break;
 		}
 		else if(!strncmp(buffer, "dump ", 5))
@@ -234,7 +224,6 @@ void filesystem(char *file)
 			      startByte += 4;
 
 			    }
-			 //dump(stdout, atoi(buffer + 5));
 			}
 			else
 			{
@@ -250,10 +239,6 @@ void filesystem(char *file)
 				int internalOffet = pageNum % 8;
 				int startByte = internalOffet *512;
 
-
-				// writeFile(filename, 512, &mapper[startByte], currentDirectory,
-				//      loadedPages, bitMap, &rootSector->lastAllocatedPage);
-
 				if(*(filename) != '/'){
         	writeFile(filename, 512, &mapper[startByte], currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
         	char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
@@ -266,86 +251,43 @@ void filesystem(char *file)
         	writeFile(filename, 512, &mapper[startByte], rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
         	char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
         	loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
+					if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+        		directoryCopy(currentDirectory, rootDirectory);
+        	}
 				}
 			}
 		}
 		else if(!strncmp(buffer, "usage", 5))
 		{
 			int i;
-											 int totalSetBits = 0;
-											 // printf("%c", bitMap[0].freePages[0]);
-											 // exit(0);
-											 for(i = 0; i < 512; i+=4)
-											 {
-															 char *charArr = malloc(4);
-															 char *charArr2 = malloc(4);
-															 int j;
-															 int indexer = 0;
-															 for(j=i; j<(i+4); j++)
-															 {
-																			 charArr[indexer] = bitMap[0].freePages[j];
-																			 charArr2[indexer] = bitMap[1].freePages[j];
-																			 indexer++;
-															 }
+			int totalSetBits = 0;
 
-															 int temp = getIntFromCharArr(charArr);
-															 int temp2 = getIntFromCharArr(charArr2);
-															 int num = countSetBits(temp);
-															 int num2 = countSetBits(temp2);
-															 totalSetBits = totalSetBits + num + num2;
-											 }
-											 int systemUsage = 512 * totalSetBits;
-											 printf("%s%d%s\n", "Space used by filesystem: ", systemUsage, " bytes");
+			for(i = 0; i < 512; i+=4)
+			{
+		 		char *charArr = malloc(4);
+				char *charArr2 = malloc(4);
+				int j;
+				int indexer = 0;
+				for(j=i; j<(i+4); j++)
+				{
+					charArr[indexer] = bitMap[0].freePages[j];
+					charArr2[indexer] = bitMap[1].freePages[j];
+					indexer++;
+				}
+			 	int temp = getIntFromCharArr(charArr);
+				int temp2 = getIntFromCharArr(charArr2);
+				int num = countSetBits(temp);
+				int num2 = countSetBits(temp2);
+				totalSetBits = totalSetBits + num + num2;
+			}
+			int systemUsage = 512 * totalSetBits;
+			printf("%s%d%s\n", "Space used by filesystem: ", systemUsage, " bytes");
+	  	int numFiles = 0;
 
+			countNumFiles(rootDirectory, 1, loadedPages, &numFiles);
 
-											 int numFilePages = 0;
-											 int index;
-											 for(index = 2; index < rootDirectory->numElements; i++)
-											 {
-															 int pageNum = rootDirectory->filesLocations[index].location;
-															 int pageOffset = pageNum / 8;
-												 char *mapper = loadPage(loadedPages, pageOffset);
-												 int internalOffet = pageNum % 8;
-												 int startByte = internalOffet *512;
-
-															 char *charArr = malloc(4);
-															 int charIndex;
-															 for(charIndex = 0; charIndex < 4; charIndex++)
-															 {
-																			 charArr[charIndex] = mapper[startByte + i + 4];
-															 }
-
-															 int pageType = getIntFromCharArr(charArr);
-
-															 if(pageType == 2)
-															 {
-																			 numFilePages++;
-																			 char *nextPageCharArr = malloc(4);
-																			 int nextPageIndex;
-																			 for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
-																			 {
-																							 nextPageCharArr[nextPageIndex] = mapper[startByte + i + 12];
-																			 }
-																			 int nextPage = getIntFromCharArr(nextPageCharArr);
-																			 while(nextPage != -1)
-																			 {
-																							 pageNum = nextPage;
-																							 pageOffset = pageNum / 8;
-																				 mapper = loadPage(loadedPages, pageOffset);
-																				 internalOffet = pageNum % 8;
-																				 startByte = internalOffet *512;
-
-																							 numFilePages++;
-																							 for(nextPageIndex = 0; nextPageIndex < 4; nextPageIndex++)
-																							 {
-																											 nextPageCharArr[nextPageIndex] = mapper[startByte + i + 12];
-																							 }
-																							 nextPage = getIntFromCharArr(nextPageCharArr);
-																			 }
-															 }
-											 }
-											 int fileUsage = numFilePages * 512;
-											 printf("%s%d%s\n", "Space used by actual files: ", fileUsage, " bytes");
+			int fileUsage = numFiles * 512;
+			printf("%s%d%s\n", "Space used by actual files: ", fileUsage, " bytes");
 		}
 		else if(!strncmp(buffer, "pwd", 3))
 		{
@@ -354,7 +296,9 @@ void filesystem(char *file)
 		}
 		else if(!strncmp(buffer, "cd ", 3))
 		{
-			traverseToDirectory(currentDirectory, buffer+3, loadedPages);
+			if (traverseToDirectory(currentDirectory, buffer+3, loadedPages) == -1){
+				printf("The specified directory was not found.\n");
+			}
 		}
 		else if(!strncmp(buffer, "ls", 2))
 		{
@@ -381,11 +325,23 @@ void filesystem(char *file)
 			space = strstr(space+1, " ");
 
 			char *data = generateData(space+1, amt<<1);
-			writeFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
-			char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
-			loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
-			if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
-				directoryCopy(rootDirectory,currentDirectory);
+
+			if(filename[0] != '/'){
+				writeFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(rootDirectory,currentDirectory);
+				}
+
+			}
+			else{
+				writeFile(filename, amt, data, rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)],loadedPages);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(currentDirectory, rootDirectory);
+				}
 			}
 			free(data);
 		}
@@ -399,28 +355,79 @@ void filesystem(char *file)
 			space = strstr(space+1, " ");
 
 			char *data = generateData(space+1, amt<<1);
-			appendWriteFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+
+			int success = -1;
+			if(filename[0] != '/'){
+				success = appendWriteFile(filename, amt, data, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+			else{
+				success = appendWriteFile(filename, amt, data, rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+			}
+
+			if(success < 0){
+				printf("Unable to append inserted data to desired file.\n");
+			}
 
 			free(data);
 		}
+		else if(!strncmp(buffer, "remove ", 7))
+		{
+			char *filename = buffer + 7;
+			char *space = strstr(buffer+7, " ");
+			*space = '\0';
+			size_t start = atoi(space + 1);
+
+			space = strstr(space+1, " ");
+			size_t end = atoi(space + 1);
+
+
+			if(filename[0] != '/'){
+				remover(filename, start, end, currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(rootDirectory,currentDirectory);
+				}
+
+			}
+			else{
+				remover(filename, start, end, rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
+				char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
+				loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)],loadedPages);
+				if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
+					directoryCopy(currentDirectory, rootDirectory);
+				}
+			}
+		}
 		else if(!strncmp(buffer, "getpages ", 9))
 		{
-			//getpages(buffer + 9);
+			getPages(buffer + 9, currentDirectory, loadedPages);
 		}
 		else if(!strncmp(buffer, "get ", 4))
 		{
-			/*char *filename = buffer + 4;
-			*/char *space = strstr(buffer+4, " ");
-			*space = '\0';
-			/*size_t start = atoi(space + 1);
-			*/
-			space = strstr(space+1, " ");
-			/*size_t end = atoi(space + 1);
-			*/
-			//get(filename, start, end);
+			char *filename = buffer + 4;
+      char *space = strstr(buffer+4, " ");
+      *space = '\0';
+    	size_t start = atoi(space + 1);
+      space = strstr(space+1, " ");
+      size_t end = atoi(space + 1);
+      struct directory_page *temp = malloc(sizeof(struct directory_page));
+      directoryCopy(temp, currentDirectory);
+      int pageNum = -1;
+      traverseToFileDirectory(temp, filename,loadedPages, &pageNum);
+			if(pageNum != -1)
+      {
+      	get(pageNum, start, end, loadedPages);
+      }
+      else
+      {
+      	printf("%s\n", "Not a valid file");
+      }
 		}
 		else if(!strncmp(buffer, "rmdir ", 6))
 		{
+
+
 			if(*(buffer+6) != '/'){
 				removeDirectory(currentDirectory, buffer + 6, loadedPages, bitMap, &rootSector->lastAllocatedPage);
 				char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
@@ -480,8 +487,6 @@ void filesystem(char *file)
 		}
 
 		updateRootSector(rootSector, loadedPages);
-
-		printf("%d\n",currentDirectory->filesLocations[0].location);
 
 		free(buffer);
 		buffer = NULL;
