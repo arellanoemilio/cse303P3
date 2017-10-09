@@ -332,19 +332,42 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 	struct directory_page *parentDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 	directoryCopy(currentDirectory, directory);
 	int currentDirectoryPage = traverseToDirectory(currentDirectory, directoryName, loadedPages);
-	if(currentDirectoryPage != -1){
-		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
-			if(currentDirectory->numElements > 2){
-				for(int i = currentDirectory->numElements - 1; i > 1; i--){
-					if(removeRecursively(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
-						printf("Unable to continue recursive deletion.\n");
-						return -1;
-					}
-				}
+	if(currentDirectoryPage != -1 && currentDirectory->numElements > 2){
+			for(int i = currentDirectory->numElements - 1; i > 1; i--){
+				if(removeRecursively(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
+				printf("Unable to continue recursive deletion.\n");
+				return -1;
 			}
 			int parentLocation = currentDirectory->filesLocations[1].location;
 			char *map = loadPage(loadedPages, parentLocation/8);
 			loadDirectoryFromMap(parentDirectory,&map[512 * (parentLocation % 8)], loadedPages);
+			for(int i = 0; i < parentDirectory->numElements; i++){
+				if(parentDirectory->filesLocations[i].location == currentDirectoryPage){
+					for(int j = i; j < parentDirectory->numElements - 1; j++){
+						parentDirectory->filesLocations[j] = parentDirectory->filesLocations[j + 1];
+					}
+					free(parentDirectory->filesLocations[parentDirectory->numElements - 1].name);
+					parentDirectory->filesLocations = realloc(parentDirectory->filesLocations,(parentDirectory->numElements - 1) * sizeof(struct file_location));
+					parentDirectory->numElements--;
+					mapDirectoryToMap(&map[512 * (parentLocation % 8)], parentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					freeMemoryPage(bitMap, &currentDirectoryPage);
+					updateFile(parentLocation, loadedPages);
+					updatePage(loadedPages, 0);
+					i = parentDirectory->numElements;
+					currentDirectory->empty = 0;
+					currentDirectory->pageType = 0;
+					map = loadPage(loadedPages, currentDirectoryPage / 8);
+					mapDirectoryToMap(&map[512 * (currentDirectoryPage % 8)], currentDirectory, loadedPages, bitMap, lastAllocatedPage);
+					updatePage(loadedPages, currentDirectoryPage / 8);
+				}
+			}
+		}
+	}
+	else if(currentDirectoryPage != -1 && currentDirectory->numElements == 2){
+		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
+			int parentLocation = currentDirectory->filesLocations[1].location;
+			char *map = loadPage(loadedPages, parentLocation/8);
+			loadDirectoryFromMap(parentDirectory,&map[512 *(parentLocation % 8)], loadedPages);
 			for(int i = 0; i < parentDirectory->numElements; i++){
 				if(parentDirectory->filesLocations[i].location == currentDirectoryPage){
 					for(int j = i; j < parentDirectory->numElements - 1; j++){
