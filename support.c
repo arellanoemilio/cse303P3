@@ -159,6 +159,8 @@ int traverseToFileDirectory(struct directory_page *currentDirectory, char *direc
 		*filePage = -1;
 	}
 
+	if(previousPageNumber == -1)
+		return pageNumber;
 	return previousPageNumber;
 }
 
@@ -328,18 +330,25 @@ int removeFile(struct directory_page *directory, char *directoryName, struct loa
 }
 
 int removeRecursively(struct directory_page *directory, char *directoryName, struct loaded_pages *loadedPages, struct free_memory_page *bitMap, int *lastAllocatedPage){
+	printf("removing %s\n", directoryName);
 	struct directory_page *currentDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
 	struct directory_page *parentDirectory = (struct directory_page *)malloc(sizeof(struct directory_page));
+	char *map;
 	directoryCopy(currentDirectory, directory);
-	int currentDirectoryPage = traverseToDirectory(currentDirectory, directoryName, loadedPages);
-	if(currentDirectoryPage != -1 && currentDirectory->numElements > 2){
+	int filePageNumber = -1;
+	int currentDirectoryPage = traverseToFileDirectory(currentDirectory, directoryName, loadedPages, &filePageNumber);
+	printf("filePageNumber is %d\n", filePageNumber);
+	printf("currentDirectoryPage %d\n",currentDirectoryPage);
+	printf("currentDirectory->numElements %d\n", currentDirectory->numElements);
+	if(currentDirectoryPage != -1 && currentDirectory->numElements > 2  && filePageNumber == -1){
 			for(int i = currentDirectory->numElements - 1; i > 1; i--){
+				printf("will remove %s\n", directoryName);
 				if(removeRecursively(currentDirectory, currentDirectory->filesLocations[i].name, loadedPages,bitMap, lastAllocatedPage) != 1){
 				printf("Unable to continue recursive deletion.\n");
 				return -1;
 			}
 			int parentLocation = currentDirectory->filesLocations[1].location;
-			char *map = loadPage(loadedPages, parentLocation/8);
+			map = loadPage(loadedPages, parentLocation/8);
 			loadDirectoryFromMap(parentDirectory,&map[512 * (parentLocation % 8)], loadedPages);
 			for(int i = 0; i < parentDirectory->numElements; i++){
 				if(parentDirectory->filesLocations[i].location == currentDirectoryPage){
@@ -364,6 +373,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 		}
 	}
 	else if(currentDirectoryPage != -1 && currentDirectory->numElements == 2){
+		printf("removing empty direcotry %s\n", directoryName);
 		if(strcmp(currentDirectory->filesLocations[1].name,"..") == 0){
 			int parentLocation = currentDirectory->filesLocations[1].location;
 			char *map = loadPage(loadedPages, parentLocation/8);
@@ -391,6 +401,7 @@ int removeRecursively(struct directory_page *directory, char *directoryName, str
 		}
 	}
 	else{
+		printf("removing file %s\n", directoryName);
 		return removeFile(directory, directoryName, loadedPages, bitMap, lastAllocatedPage);
 	}
 	return 1;

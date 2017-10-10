@@ -202,59 +202,72 @@ void filesystem(char *file)
 			  int counter = 0;
 			  int spaceCounter = 0;
 			  for (j=0; j < 512; j+=4)
-			    {
-
-			      int i;
-			      for (i=0; i < 4; i++)
-				{
-				  printf("%02x", mapper[i + startByte]);
-				  printf(" ");
+			  {
+			    int i;
+			    for (i=0; i < 4; i++)
+					{
+				  	printf("%02x", mapper[i + startByte]);
+				  	printf(" ");
+					}
+			    counter+=4;
+			    spaceCounter +=4;
+			    if((counter%32) == 0)
+					{
+				  	printf("%s\n", "");
+				  	spaceCounter = 0;
+					}
+			    if(spaceCounter == 16)
+					{
+				  	printf("%s", "    ");
+					}
+			    startByte += 4;
 				}
-			      counter+=4;
-			      spaceCounter +=4;
-			      if((counter%32) == 0)
-				{
-				  printf("%s\n", "");
-				  spaceCounter = 0;
-				}
-			      if(spaceCounter == 16)
-				{
-				  printf("%s", "    ");
-				}
-			      startByte += 4;
-
-			    }
 			}
 			else
 			{
 				char *filename = buffer + 5;
 
-				char *space = strstr(buffer+5, " ");
-				*space = '\0';
+        char *space = strstr(buffer+5, " ");
+        *space = '\0';
 
-				int pageNum = atoi(space + 1);
-				int pageOffset = pageNum / 8;
+        int pageNum = atoi(space + 1);
+         int pageOffset = pageNum / 8;
 
-				char *mapper = loadPage(loadedPages, pageOffset);
-				int internalOffet = pageNum % 8;
-				int startByte = internalOffet *512;
+         unsigned char *mapper = (unsigned char*) loadPage(loadedPages, pageOffset);
+         int internalOffet = pageNum % 8;
+         int startByte = internalOffet *512;
 
-				if(*(filename) != '/'){
-        	writeFile(filename, 512, &mapper[startByte], currentDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
-        	char *temp = loadPage(loadedPages, currentDirectory->filesLocations[0].location/8);
-        	loadDirectoryFromMap(currentDirectory, &temp[512 * (currentDirectory->filesLocations[0].location%8)],loadedPages);
-        	if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
-        		directoryCopy(rootDirectory,currentDirectory);
-        	}
-				}
-				else{
-        	writeFile(filename, 512, &mapper[startByte], rootDirectory, loadedPages, bitMap, &rootSector->lastAllocatedPage);
-        	char *temp = loadPage(loadedPages, rootDirectory->filesLocations[0].location/8);
-        	loadDirectoryFromMap(rootDirectory, &temp[512 * (rootDirectory->filesLocations[0].location%8)], loadedPages);
-					if(currentDirectory->filesLocations[0].location == rootDirectory->filesLocations[0].location){
-        		directoryCopy(currentDirectory, rootDirectory);
-        	}
-				}
+        FILE *file;
+        file = fopen(filename, "w");
+        if( file== NULL)
+        {
+        	printf("Cannot open file for writing\n");
+        }
+
+        else{
+					int counter = 0;
+				  int spaceCounter = 0;
+					for (int j=0; j < 512; j+=4)
+				  {
+				    for (int i=0; i < 4; i++)
+						{
+					  	fprintf(file, "%02x", mapper[i + startByte]);
+					  	fprintf(file, " ");
+						}
+				    counter+=4;
+				    spaceCounter +=4;
+				    if((counter%32) == 0)
+						{
+					  	fprintf(file, "%s\n", "");
+					  	spaceCounter = 0;
+						}
+				    if(spaceCounter == 16)
+						{
+					  	fprintf(file, "%s", "    ");
+						}
+				    startByte += 4;
+					}
+        }
 			}
 		}
 		else if(!strncmp(buffer, "usage", 5))
